@@ -8,9 +8,16 @@ interface AudioEngine {
 }
 
 export function initAudio(): AudioEngine {
-  // Create a polyphonic synthesizer without specifying constructor arguments
-  // This will use defaults that work in both Node.js and browser environments
-  const piano = new Tone.PolySynth().toDestination();
+  // Create a polyphonic synthesizer
+  // First check if Tone.js is properly loaded
+  if (typeof Tone !== 'object' || !Tone.PolySynth) {
+    console.error('Tone.js is not properly loaded or PolySynth is not available');
+    // Provide a fallback implementation that logs errors instead of crashing
+    return createFallbackAudioEngine();
+  }
+  
+  // Create PolySynth with Tone.Synth as voice
+  const piano = new Tone.PolySynth(Tone.Synth).toDestination();
   
   // Set up basic piano-like envelope
   piano.set({
@@ -115,6 +122,27 @@ export function initAudio(): AudioEngine {
       // This method will be called after user interaction to start audio context
       await Tone.start();
       console.log('Audio context started');
+    }
+  };
+}
+
+// Create a fallback audio engine that just logs actions but doesn't try to play sounds
+// This is used when Tone.js fails to load properly
+function createFallbackAudioEngine(): AudioEngine {
+  console.warn('Using fallback audio engine - sounds will not play');
+  return {
+    playNote: (note: number, velocity: number, duration: number) => {
+      console.log(`[Fallback] Play note: ${note}, velocity: ${velocity}, duration: ${duration}ms`);
+    },
+    setSustain: (on: boolean) => {
+      console.log(`[Fallback] Set sustain: ${on}`);
+    },
+    allNotesOff: () => {
+      console.log('[Fallback] All notes off');
+    },
+    startAudio: async () => {
+      console.log('[Fallback] Audio context started (mock)');
+      return Promise.resolve();
     }
   };
 }
