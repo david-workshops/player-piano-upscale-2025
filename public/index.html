@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piano Project</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background-color: #000;
+      color: #0f0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #0f0;
+      text-shadow: 0 0 5px #0f0;
+      margin-bottom: 30px;
+    }
+    
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 20px;
+      padding: 20px;
+      border: 1px solid #0f0;
+      background-color: #001100;
+      border-radius: 5px;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 200px;
+    }
+    
+    label {
+      margin-bottom: 5px;
+      color: #0f0;
+    }
+    
+    select, button {
+      padding: 10px;
+      background-color: #000;
+      color: #0f0;
+      border: 1px solid #0f0;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+    }
+    
+    button {
+      min-width: 150px;
+      transition: all 0.3s;
+    }
+    
+    button:hover {
+      background-color: #030;
+    }
+    
+    button:active {
+      background-color: #050;
+    }
+    
+    .visualization {
+      flex-grow: 1;
+      overflow: auto;
+      border: 1px solid #0f0;
+      background-color: #001100;
+      padding: 20px;
+      border-radius: 5px;
+      height: 300px;
+      font-family: 'Courier New', monospace;
+      white-space: pre;
+    }
+    
+    .status {
+      padding: 10px;
+      margin-top: 20px;
+      border: 1px solid #0f0;
+      background-color: #001100;
+      text-align: center;
+      border-radius: 5px;
+    }
+    
+    /* CRT effect */
+    @keyframes flicker {
+      0% { opacity: 0.9; }
+      5% { opacity: 1; }
+      10% { opacity: 0.9; }
+      15% { opacity: 1; }
+      20% { opacity: 0.9; }
+      25% { opacity: 1; }
+      30% { opacity: 0.9; }
+      35% { opacity: 1; }
+      40% { opacity: 0.9; }
+      45% { opacity: 1; }
+      50% { opacity: 0.9; }
+      55% { opacity: 1; }
+      60% { opacity: 0.9; }
+      65% { opacity: 1; }
+      70% { opacity: 0.9; }
+      75% { opacity: 1; }
+      80% { opacity: 0.9; }
+      85% { opacity: 1; }
+      90% { opacity: 0.9; }
+      95% { opacity: 1; }
+      100% { opacity: 0.9; }
+    }
+    
+    body::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      animation: flicker 0.3s infinite;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <h1>PIANO COUNTERPOINT GENERATOR</h1>
+  
+  <div class="controls">
+    <div class="control-group">
+      <label for="outputMode">OUTPUT MODE:</label>
+      <select id="outputMode">
+        <option value="browser">Browser Audio</option>
+        <option value="midi">MIDI Out</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <label for="key">KEY:</label>
+      <select id="key">
+        <option value="C">C</option>
+        <option value="C#">C#</option>
+        <option value="D">D</option>
+        <option value="D#">D#</option>
+        <option value="E">E</option>
+        <option value="F">F</option>
+        <option value="F#">F#</option>
+        <option value="G">G</option>
+        <option value="G#">G#</option>
+        <option value="A">A</option>
+        <option value="A#">A#</option>
+        <option value="B">B</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <label for="scale">SCALE:</label>
+      <select id="scale">
+        <option value="major">Major</option>
+        <option value="minor">Minor</option>
+        <option value="harmonicMinor">Harmonic Minor</option>
+        <option value="melodicMinor">Melodic Minor</option>
+        <option value="pentatonicMajor">Pentatonic Major</option>
+        <option value="pentatonicMinor">Pentatonic Minor</option>
+        <option value="chromatic">Chromatic</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <label for="mode">MODE:</label>
+      <select id="mode">
+        <option value="ionian">Ionian</option>
+        <option value="dorian">Dorian</option>
+        <option value="phrygian">Phrygian</option>
+        <option value="lydian">Lydian</option>
+        <option value="mixolydian">Mixolydian</option>
+        <option value="aeolian">Aeolian</option>
+        <option value="locrian">Locrian</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <button id="startBtn">START</button>
+      <button id="stopBtn" style="margin-top: 10px;">STOP</button>
+    </div>
+  </div>
+  
+  <div class="visualization" id="visualization">
+INITIALIZING SYSTEM...
+READY TO GENERATE COUNTERPOINT...
+  </div>
+  
+  <div class="status" id="status">STATUS: IDLE</div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/client/index.js"></script>
+</body>
+</html>
