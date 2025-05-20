@@ -169,12 +169,36 @@ function stopAllNotes() {
     midiOutput.send([0xB0, 123, 0]);
   }
   
+  // Reset all pedals to 0
+  resetAllPedals();
+  
   // Clear notes playing
   notesPlaying = [];
   notesPlayingDisplay.textContent = '--';
   
   // Clear visualization
   visualization.innerHTML = '';
+}
+
+// Reset all pedals to 0
+function resetAllPedals() {
+  // Reset pedal status
+  pedalStatus.sustain = 0;
+  pedalStatus.sostenuto = 0;
+  pedalStatus.soft = 0;
+  
+  // Send MIDI messages to reset pedals
+  if (midiOutput) {
+    // Reset sustain pedal
+    midiOutput.send([0xB0, 64, 0]);
+    // Reset sostenuto pedal
+    midiOutput.send([0xB0, 66, 0]);
+    // Reset soft pedal
+    midiOutput.send([0xB0, 67, 0]);
+  }
+  
+  // Update pedal display
+  updatePedalDisplay();
 }
 
 // Send MIDI pedal message

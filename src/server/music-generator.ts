@@ -107,15 +107,31 @@ function maybeChangeMusicalContext(): void {
   }
 }
 
+// Track last time sustain pedal was turned off
+let lastSustainOffTime = Date.now();
+let sustainPedalEnabled = true;
+
 // Decide which pedal to use
 function decidePedal(): Pedal | null {
   const rand = Math.random();
+  const now = Date.now();
   
-  if (rand < 0.1) {
+  // Ensure long periods without sustain pedal (at least 15-30 seconds)
+  const timeSinceLastOff = now - lastSustainOffTime;
+  if (!sustainPedalEnabled && timeSinceLastOff > 15000 + Math.random() * 15000) {
+    sustainPedalEnabled = true;
+  } else if (sustainPedalEnabled && Math.random() < 0.01) {
+    // Occasionally disable sustain pedal for a period
+    sustainPedalEnabled = false;
+    lastSustainOffTime = now;
+    return { type: 'sustain', value: 0 }; // Turn off sustain pedal
+  }
+  
+  if (rand < 0.05 && sustainPedalEnabled) {
     return { type: 'sustain', value: Math.random() * 0.5 + 0.5 }; // 0.5-1.0
-  } else if (rand < 0.15) {
+  } else if (rand < 0.1) {
     return { type: 'sostenuto', value: 1 };
-  } else if (rand < 0.2) {
+  } else if (rand < 0.15) {
     return { type: 'soft', value: Math.random() * 0.7 + 0.3 }; // 0.3-1.0
   }
   
