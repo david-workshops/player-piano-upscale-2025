@@ -90,15 +90,26 @@ npm run docs:serve
 
 Then open your browser to http://localhost:8080 to view the documentation.
 
+#### Online Documentation
+
+The project documentation is automatically published to GitHub Pages when changes are pushed to the main branch. You can access the latest documentation at:
+
+```
+https://[organization-name].github.io/demo2/
+```
+
 ## CI/CD
 
-This project uses GitHub Actions for continuous integration:
+This project uses GitHub Actions for continuous integration and deployment:
 
 - Linting checks
+- TypeScript type-checking
 - Unit tests
+- E2E tests
 - Build verification
+- Documentation generation and deployment to GitHub Pages
 
-The workflow runs automatically on push to main branch and on pull requests.
+The workflows run automatically on push to main branch and on pull requests.
 
 ## Requirements
 
