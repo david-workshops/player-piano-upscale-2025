@@ -11,7 +11,7 @@ const io = new Server(server);
 
 // Serve static files
 app.use(express.static(path.join(__dirname, '../../public')));
-app.use('/client', express.static(path.join(__dirname, '../../dist/client')));
+app.use('/client', express.static(path.join(__dirname, '../../public/client')));
 
 // Serve index.html
 app.get('/', (_req, res) => {

@@ -29,8 +29,8 @@ export function initAudio(): AudioEngine {
   // Connect synth to effects
   piano.connect(reverb);
   
-  // Active notes for sustain pedal
-  const activeNotes = new Map<number, number>(); // Store Tone.Transport event IDs
+  // Active notes for sustain pedal - store transportId (number) for each note
+  const activeNotes = new Map<number, number>();
   let sustainOn = false;
 
   // Convert MIDI note to frequency
@@ -58,12 +58,12 @@ export function initAudio(): AudioEngine {
       
       // If sustain is off, schedule the release
       if (!sustainOn) {
-        const event = Tone.Transport.schedule(() => {
+        const transportId = Tone.Transport.schedule(() => {
           piano.triggerRelease(freq);
-        }, now + durationSeconds);
+        }, now + durationSeconds) as unknown as number;
         
-        // Store the event for potential cancellation
-        activeNotes.set(note, event);
+        // Store the event ID for potential cancellation
+        activeNotes.set(note, transportId);
       } else {
         // If sustain is on, store the note without scheduling release
         activeNotes.set(note, -1); // Use a dummy value since we don't have an event ID
@@ -79,9 +79,9 @@ export function initAudio(): AudioEngine {
         const now = Tone.now();
         
         // Release all sustained notes
-        activeNotes.forEach((eventId, note) => {
-          if (eventId !== -1) {
-            Tone.Transport.clear(eventId);
+        activeNotes.forEach((transportId, note) => {
+          if (transportId !== -1) {
+            Tone.Transport.clear(transportId);
           }
           piano.triggerRelease(midiToFreq(note));
         });
@@ -93,9 +93,9 @@ export function initAudio(): AudioEngine {
     
     allNotesOff: () => {
       // Clear all scheduled events
-      activeNotes.forEach(eventId => {
-        if (eventId !== -1) {
-          Tone.Transport.clear(eventId);
+      activeNotes.forEach(transportId => {
+        if (transportId !== -1) {
+          Tone.Transport.clear(transportId);
         }
       });
       

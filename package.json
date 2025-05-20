@@ -4,17 +4,20 @@
   "description": "A piano project with minimalist counterpoint music generation",
   "main": "dist/server/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc",
+    "build:client": "webpack",
     "start": "node dist/server/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server/index.ts",
     "start:dev": "concurrently \"npm run build:watch\" \"npm run dev\"",
-    "build:watch": "tsc -w",
+    "build:watch": "concurrently \"tsc -w\" \"webpack --watch\"",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "prepare": "./scripts/install-hooks.sh",
     "docs": "typedoc",
-    "docs:serve": "npx http-server docs"
+    "docs:serve": "npx http-server docs",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "piano",
@@ -41,9 +44,12 @@
     "eslint": "^8.54.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.3.4",
+    "ts-loader": "^9.5.2",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typedoc": "^0.28.4",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.2",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1"
   }
 }
