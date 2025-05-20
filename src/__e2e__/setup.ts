@@ -1,6 +1,9 @@
 // Setup file for E2E tests
 // This file is run before each test
 
+// Import web audio mocks
+import './mocks/web-audio.mock.js';
+
 // Mock window.location
 const mockLocation = {
   host: 'localhost:3000',
