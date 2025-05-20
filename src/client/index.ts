@@ -1,7 +1,8 @@
 import { initAudio } from './audio/piano';
 import { Visualizer } from './visualization/visualizer';
 import { setupMidiOutput } from './ui/controls';
-import { io, Socket } from 'socket.io-client';
+// Import the socket.io-client as a default import
+import io from 'socket.io-client';
 
 // Define interfaces for MIDI events
 interface MidiNote {
@@ -27,7 +28,7 @@ interface MidiEvent {
 }
 
 // Socket.io connection
-const socket: Socket = io();
+const socket = io();
 
 // Initialize modules
 const audioEngine = initAudio();

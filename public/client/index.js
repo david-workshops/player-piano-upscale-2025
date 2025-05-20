@@ -6714,8 +6714,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.initAudio = initAudio;
 const Tone = __importStar(__webpack_require__(/*! tone */ "./node_modules/tone/build/Tone.js"));
 function initAudio() {
-    // Create a polyphonic synthesizer
-    const piano = new Tone.PolySynth(Tone.Synth).toDestination();
+    // Initialize Tone.js
+    // In a browser environment, this ensures AudioContext is created
+    // only after user interaction
+    Tone.start();
+    // Create a polyphonic synthesizer without specifying constructor arguments
+    // This will use defaults that work in both Node.js and browser environments
+    const piano = new Tone.PolySynth().toDestination();
     // Set up basic piano-like envelope
     piano.set({
         envelope: {
@@ -6798,6 +6803,162 @@ function initAudio() {
             activeNotes.clear();
         }
     };
+}
+
+
+/***/ }),
+
+/***/ "./src/client/index.ts":
+/*!*****************************!*\
+  !*** ./src/client/index.ts ***!
+  \*****************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const piano_1 = __webpack_require__(/*! ./audio/piano */ "./src/client/audio/piano.ts");
+const visualizer_1 = __webpack_require__(/*! ./visualization/visualizer */ "./src/client/visualization/visualizer.ts");
+const controls_1 = __webpack_require__(/*! ./ui/controls */ "./src/client/ui/controls.ts");
+// Import the socket.io-client as a default import
+const socket_io_client_1 = __importDefault(__webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/build/cjs/index.js"));
+// Socket.io connection
+const socket = (0, socket_io_client_1.default)();
+// Initialize modules
+const audioEngine = (0, piano_1.initAudio)();
+const visualizer = new visualizer_1.Visualizer('visualization');
+const midiOutput = (0, controls_1.setupMidiOutput)();
+// UI Elements
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const outputModeSelect = document.getElementById('outputMode');
+const statusElement = document.getElementById('status');
+const currentKeyElement = document.getElementById('currentKey');
+const currentScaleElement = document.getElementById('currentScale');
+const currentModeElement = document.getElementById('currentMode');
+// Current state
+let isPlaying = false;
+const activeNotes = new Set();
+// Handle start button
+startBtn.addEventListener('click', () => {
+    if (isPlaying)
+        return;
+    // Start stream without specific options - server will choose automatically
+    socket.emit('startStream', {});
+    isPlaying = true;
+    statusElement.textContent = 'STATUS: PLAYING - Auto mode';
+    visualizer.log('STREAMING STARTED...');
+    visualizer.log('CONFIGURATION: Auto-changing key, scale, and mode');
+});
+// Handle stop button
+stopBtn.addEventListener('click', () => {
+    if (!isPlaying)
+        return;
+    socket.emit('stopStream');
+    isPlaying = false;
+    statusElement.textContent = 'STATUS: IDLE';
+    visualizer.log('STREAMING STOPPED...');
+    // Stop all active notes
+    stopAllNotes();
+});
+// Handle incoming MIDI events
+socket.on('midiEvent', (event) => {
+    // Display in visualizer
+    visualizer.visualizeMIDIEvent(event);
+    // Process event based on type
+    const outputMode = outputModeSelect.value;
+    switch (event.type) {
+        case 'note':
+            const noteData = event.data;
+            // Check if it's a silence (dummy note)
+            if (noteData.note === -1)
+                return;
+            // Play note using selected output method
+            if (outputMode === 'browser') {
+                audioEngine.playNote(noteData.note, noteData.velocity, noteData.duration);
+            }
+            else if (outputMode === 'midi' && midiOutput.output) {
+                midiOutput.output.playNote(noteData.note, noteData.channel || 0, {
+                    duration: noteData.duration,
+                    velocity: noteData.velocity / 127 // WebMIDI uses 0-1 for velocity
+                });
+            }
+            // Track active note
+            activeNotes.add(noteData.note);
+            break;
+        case 'chord':
+            const chordData = event.data;
+            // Play each note in the chord
+            chordData.notes.forEach(note => {
+                if (outputMode === 'browser') {
+                    audioEngine.playNote(note.note, note.velocity, note.duration);
+                }
+                else if (outputMode === 'midi' && midiOutput.output) {
+                    midiOutput.output.playNote(note.note, note.channel || 0, {
+                        duration: note.duration,
+                        velocity: note.velocity / 127
+                    });
+                }
+                // Track active notes
+                activeNotes.add(note.note);
+            });
+            break;
+        case 'pedal':
+            const pedalData = event.data;
+            // Handle pedal events
+            if (outputMode === 'browser') {
+                // Handle browser audio pedal (sustain only for now)
+                if (pedalData.type === 'sustain') {
+                    audioEngine.setSustain(pedalData.value > 0);
+                }
+            }
+            else if (outputMode === 'midi' && midiOutput.output) {
+                // Handle MIDI pedal messages
+                // Control change values for pedals: sustain = 64, sostenuto = 66, soft = 67
+                const ccNumber = pedalData.type === 'sustain' ? 64 :
+                    pedalData.type === 'sostenuto' ? 66 :
+                        pedalData.type === 'soft' ? 67 : 64;
+                midiOutput.output.sendControlChange(ccNumber, pedalData.value, 0);
+            }
+            break;
+    }
+});
+// Handle all notes off message
+socket.on('allNotesOff', () => {
+    stopAllNotes();
+});
+// Handle music parameter changes
+socket.on('musicParametersChanged', (params) => {
+    // Update the UI with current settings
+    currentKeyElement.textContent = params.key;
+    currentScaleElement.textContent = params.scale;
+    currentModeElement.textContent = params.mode;
+    // Log the change
+    visualizer.log(`MUSIC CHANGED: KEY=${params.key}, SCALE=${params.scale}, MODE=${params.mode}`);
+    if (isPlaying) {
+        statusElement.textContent = `STATUS: PLAYING - ${params.key} ${params.scale} ${params.mode}`;
+    }
+});
+// Stop all active notes
+function stopAllNotes() {
+    // Get output mode
+    const outputMode = outputModeSelect.value;
+    // Stop notes based on output mode
+    if (outputMode === 'browser') {
+        audioEngine.allNotesOff();
+    }
+    else if (outputMode === 'midi' && midiOutput.output) {
+        midiOutput.output.stopNote('all');
+        // Also send all sounds off message (CC 120)
+        midiOutput.output.sendControlChange(120, 0, 0);
+        // Reset all controllers (CC 121)
+        midiOutput.output.sendControlChange(121, 0, 0);
+    }
+    // Clear active notes tracking
+    activeNotes.clear();
 }
 
 
@@ -7035,158 +7196,12 @@ exports.Visualizer = Visualizer;
 /******/ 	})();
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
-(() => {
-"use strict";
-var exports = __webpack_exports__;
-/*!*****************************!*\
-  !*** ./src/client/index.ts ***!
-  \*****************************/
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const piano_1 = __webpack_require__(/*! ./audio/piano */ "./src/client/audio/piano.ts");
-const visualizer_1 = __webpack_require__(/*! ./visualization/visualizer */ "./src/client/visualization/visualizer.ts");
-const controls_1 = __webpack_require__(/*! ./ui/controls */ "./src/client/ui/controls.ts");
-const socket_io_client_1 = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/build/cjs/index.js");
-// Socket.io connection
-const socket = (0, socket_io_client_1.io)();
-// Initialize modules
-const audioEngine = (0, piano_1.initAudio)();
-const visualizer = new visualizer_1.Visualizer('visualization');
-const midiOutput = (0, controls_1.setupMidiOutput)();
-// UI Elements
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const outputModeSelect = document.getElementById('outputMode');
-const statusElement = document.getElementById('status');
-const currentKeyElement = document.getElementById('currentKey');
-const currentScaleElement = document.getElementById('currentScale');
-const currentModeElement = document.getElementById('currentMode');
-// Current state
-let isPlaying = false;
-const activeNotes = new Set();
-// Handle start button
-startBtn.addEventListener('click', () => {
-    if (isPlaying)
-        return;
-    // Start stream without specific options - server will choose automatically
-    socket.emit('startStream', {});
-    isPlaying = true;
-    statusElement.textContent = 'STATUS: PLAYING - Auto mode';
-    visualizer.log('STREAMING STARTED...');
-    visualizer.log('CONFIGURATION: Auto-changing key, scale, and mode');
-});
-// Handle stop button
-stopBtn.addEventListener('click', () => {
-    if (!isPlaying)
-        return;
-    socket.emit('stopStream');
-    isPlaying = false;
-    statusElement.textContent = 'STATUS: IDLE';
-    visualizer.log('STREAMING STOPPED...');
-    // Stop all active notes
-    stopAllNotes();
-});
-// Handle incoming MIDI events
-socket.on('midiEvent', (event) => {
-    // Display in visualizer
-    visualizer.visualizeMIDIEvent(event);
-    // Process event based on type
-    const outputMode = outputModeSelect.value;
-    switch (event.type) {
-        case 'note':
-            const noteData = event.data;
-            // Check if it's a silence (dummy note)
-            if (noteData.note === -1)
-                return;
-            // Play note using selected output method
-            if (outputMode === 'browser') {
-                audioEngine.playNote(noteData.note, noteData.velocity, noteData.duration);
-            }
-            else if (outputMode === 'midi' && midiOutput.output) {
-                midiOutput.output.playNote(noteData.note, noteData.channel || 0, {
-                    duration: noteData.duration,
-                    velocity: noteData.velocity / 127 // WebMIDI uses 0-1 for velocity
-                });
-            }
-            // Track active note
-            activeNotes.add(noteData.note);
-            break;
-        case 'chord':
-            const chordData = event.data;
-            // Play each note in the chord
-            chordData.notes.forEach(note => {
-                if (outputMode === 'browser') {
-                    audioEngine.playNote(note.note, note.velocity, note.duration);
-                }
-                else if (outputMode === 'midi' && midiOutput.output) {
-                    midiOutput.output.playNote(note.note, note.channel || 0, {
-                        duration: note.duration,
-                        velocity: note.velocity / 127
-                    });
-                }
-                // Track active notes
-                activeNotes.add(note.note);
-            });
-            break;
-        case 'pedal':
-            const pedalData = event.data;
-            // Handle pedal events
-            if (outputMode === 'browser') {
-                // Handle browser audio pedal (sustain only for now)
-                if (pedalData.type === 'sustain') {
-                    audioEngine.setSustain(pedalData.value > 0);
-                }
-            }
-            else if (outputMode === 'midi' && midiOutput.output) {
-                // Handle MIDI pedal messages
-                // Control change values for pedals: sustain = 64, sostenuto = 66, soft = 67
-                const ccNumber = pedalData.type === 'sustain' ? 64 :
-                    pedalData.type === 'sostenuto' ? 66 :
-                        pedalData.type === 'soft' ? 67 : 64;
-                midiOutput.output.sendControlChange(ccNumber, pedalData.value, 0);
-            }
-            break;
-    }
-});
-// Handle all notes off message
-socket.on('allNotesOff', () => {
-    stopAllNotes();
-});
-// Handle music parameter changes
-socket.on('musicParametersChanged', (params) => {
-    // Update the UI with current settings
-    currentKeyElement.textContent = params.key;
-    currentScaleElement.textContent = params.scale;
-    currentModeElement.textContent = params.mode;
-    // Log the change
-    visualizer.log(`MUSIC CHANGED: KEY=${params.key}, SCALE=${params.scale}, MODE=${params.mode}`);
-    if (isPlaying) {
-        statusElement.textContent = `STATUS: PLAYING - ${params.key} ${params.scale} ${params.mode}`;
-    }
-});
-// Stop all active notes
-function stopAllNotes() {
-    // Get output mode
-    const outputMode = outputModeSelect.value;
-    // Stop notes based on output mode
-    if (outputMode === 'browser') {
-        audioEngine.allNotesOff();
-    }
-    else if (outputMode === 'midi' && midiOutput.output) {
-        midiOutput.output.stopNote('all');
-        // Also send all sounds off message (CC 120)
-        midiOutput.output.sendControlChange(120, 0, 0);
-        // Reset all controllers (CC 121)
-        midiOutput.output.sendControlChange(121, 0, 0);
-    }
-    // Clear active notes tracking
-    activeNotes.clear();
-}
-
-})();
-
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __webpack_require__("./src/client/index.ts");
+/******/ 	
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map

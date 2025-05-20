@@ -7,8 +7,14 @@ interface AudioEngine {
 }
 
 export function initAudio(): AudioEngine {
-  // Create a polyphonic synthesizer
-  const piano = new Tone.PolySynth(Tone.Synth).toDestination();
+  // Initialize Tone.js
+  // In a browser environment, this ensures AudioContext is created
+  // only after user interaction
+  Tone.start();
+
+  // Create a polyphonic synthesizer without specifying constructor arguments
+  // This will use defaults that work in both Node.js and browser environments
+  const piano = new Tone.PolySynth().toDestination();
   
   // Set up basic piano-like envelope
   piano.set({
