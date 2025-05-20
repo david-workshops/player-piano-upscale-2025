@@ -123,6 +123,23 @@ The visualization frontend:
 - Creates minimalist abstract "sea of colour" visualizations
 - Updates every 45 seconds with smooth transitions
 - Displays information about the current prompt and influences
+- Integrates with the Freepik Mystic AI API for image generation
+  - Falls back to CSS gradients when API key is not provided
+  - Uses optimal configuration for abstract image generation
+  - Dynamically adjusts image parameters based on musical content
+
+### Freepik API Integration
+
+The visualization system uses the Freepik Mystic AI API with the following features:
+- POST requests to generate images from dynamically created prompts
+- GET requests to retrieve completed image generation tasks
+- Optimal parameter configuration using:
+  - Appropriate resolution (2K)
+  - Dynamic aspect ratio selection
+  - Creative detailing adjustments based on music complexity
+  - Engine selection based on weather conditions
+
+See the [Visual Client README](src/visual-client/README.md) for detailed API setup instructions.
 
 ### Architecture
 

@@ -15,8 +15,12 @@ const notesInfoElement = document.getElementById('notes-info') as HTMLElement;
 const weatherInfoElement = document.getElementById('weather-info') as HTMLElement;
 const consoleOutput = document.getElementById('console-output') as HTMLElement;
 
+// Get API key from environment (in a real app) or from a secure config
+// For development, we'll use a placeholder when there's no API key
+const apiKey = ''; // process.env.FREEPIK_API_KEY
+
 // Freepik service
-const freepikService = new FreepikService();
+const freepikService = new FreepikService(apiKey);
 
 // State variables
 let isPlaying = false;
@@ -27,13 +31,25 @@ let fadeInProgress = false;
 
 // Constants
 const IMAGE_UPDATE_INTERVAL = 45 * 1000; // 45 seconds
+const FADE_TRANSITION_DURATION = 3000; // 3 seconds
 
 // Initialize visualization
 async function initVisualization() {
   try {
     // Generate the first image
     const imageUrl = await freepikService.generateImage();
-    currentImageElement.style.backgroundImage = `url(${imageUrl})`;
+    
+    // Use the result either as a direct URL or as a CSS gradient
+    if (imageUrl.startsWith('http')) {
+      // It's a real API image URL
+      currentImageElement.style.backgroundImage = `url(${imageUrl})`;
+      logToConsole('Using real Freepik API image');
+    } else {
+      // It's a CSS gradient (placeholder)
+      currentImageElement.style.backgroundImage = imageUrl;
+      logToConsole('Using placeholder gradient image');
+    }
+    
     currentImageElement.style.opacity = '1';
     nextImageElement.style.opacity = '0';
     
@@ -84,7 +100,17 @@ async function updateImage() {
     const newImageUrl = await freepikService.generateImage();
     
     // Update the next image container (currently hidden)
-    nextImageElement.style.backgroundImage = `url(${newImageUrl})`;
+    if (newImageUrl.startsWith('http')) {
+      // Real API image URL
+      // Preload the image before showing it
+      await preloadImage(newImageUrl);
+      nextImageElement.style.backgroundImage = `url(${newImageUrl})`;
+      logToConsole('New Freepik API image loaded');
+    } else {
+      // CSS gradient (placeholder)
+      nextImageElement.style.backgroundImage = newImageUrl;
+      logToConsole('New placeholder gradient generated');
+    }
     
     // Start the fade transition
     nextImageElement.style.opacity = '1';
@@ -109,12 +135,22 @@ async function updateImage() {
       
       fadeInProgress = false;
       logToConsole('Image updated with fade transition');
-    }, 3000); // Match this with the CSS transition time
+    }, FADE_TRANSITION_DURATION);
     
   } catch (error) {
     fadeInProgress = false;
     logToConsole(`Error updating image: ${error}`);
   }
+}
+
+// Helper function to preload an image
+function preloadImage(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+    img.src = url;
+  });
 }
 
 // Update the notes info display

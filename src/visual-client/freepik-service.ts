@@ -1,11 +1,29 @@
 import { WeatherData } from '../shared/types';
 
-// Interface for the Freepik API response
-interface FreepikApiResponse {
-  status: string;
-  data: {
+// Interfaces for the Freepik API
+interface FreepikImageGenerationRequest {
+  prompt: string;
+  resolution?: '1k' | '2k' | '4k';
+  aspect_ratio?: 'square_1_1' | 'classic_4_3' | 'traditional_3_4' | 'widescreen_16_9' | 'social_story_9_16' | 
+                 'smartphone_horizontal_20_9' | 'smartphone_vertical_9_20' | 'standard_3_2' | 'portrait_2_3' |
+                 'horizontal_2_1' | 'vertical_1_2' | 'social_5_4' | 'social_post_4_5';
+  realism?: boolean;
+  creative_detailing?: number;
+  engine?: 'automatic' | 'magnific_illusio' | 'magnific_sharpy' | 'magnific_sparkle';
+  fixed_generation?: boolean;
+  webhook_url?: string;
+}
+
+interface FreepikTaskResponse {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+}
+
+interface FreepikCompletedTaskResponse {
+  id: string;
+  status: 'completed';
+  result: {
     url: string;
-    id: string;
   };
 }
 
@@ -18,7 +36,8 @@ interface ActiveNotes {
 }
 
 export class FreepikService {
-  private baseUrl = 'https://docs.freepik.com/mystic';
+  private baseUrl = 'https://api.freepik.com/v1/ai/mystic';
+  private apiKey = ''; // This should be set via environment variable or config
   private lastPrompt = '';
   private activeNotes: ActiveNotes = {
     noteNames: [],
@@ -27,6 +46,14 @@ export class FreepikService {
     lowestNote: 127
   };
   private weatherData: WeatherData | null = null;
+  private usePlaceholder = true; // Use placeholder when API key is not available
+
+  constructor(apiKey?: string) {
+    if (apiKey) {
+      this.apiKey = apiKey;
+      this.usePlaceholder = false;
+    }
+  }
 
   // Update the active notes being played
   public updateNotes(noteNames: string[], midiNumbers: number[] = []) {
@@ -115,21 +142,124 @@ export class FreepikService {
   public async generateImage(): Promise<string> {
     const prompt = this.generatePrompt();
     
-    try {
-      // In a real implementation, this would call the Freepik API
-      // Since we can't make external API calls in this environment, we'll simulate it
-      console.log(`Would call Freepik API with prompt: ${prompt}`);
-      
-      // Simulate API response with a placeholder image URL
-      // This would be replaced with actual API call in production
+    if (this.usePlaceholder || !this.apiKey) {
+      console.log(`Using placeholder image with prompt: ${prompt}`);
       const colors = this.getColorsFromPrompt(prompt);
-      const placeholderUrl = this.generatePlaceholderImage(colors);
-      
-      return placeholderUrl;
-    } catch (error) {
-      console.error('Error generating image:', error);
-      throw error;
+      return this.generatePlaceholderImage(colors);
     }
+    
+    try {
+      // Create request body according to Freepik API documentation
+      const requestBody: FreepikImageGenerationRequest = {
+        prompt: prompt,
+        resolution: '2k', // Default resolution
+        aspect_ratio: 'square_1_1', // Default aspect ratio
+        realism: true, // Default value
+        creative_detailing: 33, // Default value
+        engine: 'automatic', // Default engine
+        fixed_generation: false // Default value
+      };
+      
+      // Customize some settings based on weather and notes
+      if (this.weatherData) {
+        // More creative and less realistic for extreme weather
+        if ([95, 96, 99].includes(this.weatherData.weatherCode)) { // Thunderstorm
+          requestBody.creative_detailing = 50;
+          requestBody.realism = false;
+        }
+        
+        // Better aspect ratio for displaying on the visualization canvas
+        if (this.activeNotes.count > 3) {
+          requestBody.aspect_ratio = 'square_1_1'; // More complex visualization
+        } else {
+          requestBody.aspect_ratio = 'horizontal_2_1'; // Wider landscape for simpler scenes
+        }
+        
+        // Choose engine based on weather
+        if ([0, 1].includes(this.weatherData.weatherCode)) { // Clear
+          requestBody.engine = 'magnific_sharpy'; // Sharper detail for clear days
+        } else if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(this.weatherData.weatherCode)) { // Rain
+          requestBody.engine = 'magnific_illusio'; // Softer for rainy days
+        } else {
+          requestBody.engine = 'magnific_sparkle'; // Middle ground for other conditions
+        }
+      }
+      
+      console.log('Requesting image generation from Freepik API...');
+      
+      // Step 1: Create the task
+      const taskResponse = await this.createImageTask(requestBody);
+      
+      // Step 2: Poll for task completion
+      const imageUrl = await this.pollTaskStatus(taskResponse.id);
+      
+      return imageUrl;
+    } catch (error) {
+      console.error('Error generating image with Freepik API:', error);
+      // Fallback to placeholder image on error
+      const colors = this.getColorsFromPrompt(prompt);
+      return this.generatePlaceholderImage(colors);
+    }
+  }
+  
+  // Create an image generation task
+  private async createImageTask(requestBody: FreepikImageGenerationRequest): Promise<FreepikTaskResponse> {
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-freepik-api-key': this.apiKey
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to create image task: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json() as FreepikTaskResponse;
+  }
+  
+  // Poll for task completion
+  private async pollTaskStatus(taskId: string, maxAttempts = 30, delayMs = 2000): Promise<string> {
+    console.log(`Polling for task ${taskId} completion...`);
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}/${taskId}`, {
+          method: 'GET',
+          headers: {
+            'x-freepik-api-key': this.apiKey
+          }
+        });
+        
+        if (!response.ok) {
+          console.warn(`Error checking task status: ${response.status} ${response.statusText}`);
+          // Continue polling despite error
+        } else {
+          const taskInfo = await response.json();
+          
+          if (taskInfo.status === 'completed') {
+            console.log('Task completed successfully');
+            return (taskInfo as FreepikCompletedTaskResponse).result.url;
+          }
+          
+          if (taskInfo.status === 'failed') {
+            throw new Error('Task failed');
+          }
+          
+          console.log(`Task status: ${taskInfo.status}, waiting...`);
+        }
+      } catch (error) {
+        console.error(`Error polling task: ${error}`);
+        // Continue polling despite error
+      }
+      
+      // Wait before next attempt
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    
+    throw new Error(`Task did not complete after ${maxAttempts} attempts`);
   }
   
   // Extract dominant colors from the prompt to use for our placeholder
