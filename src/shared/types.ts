@@ -25,6 +25,13 @@ export interface Pedal {
   value: number; // 0-1 range for pedal depth
 }
 
+// Weather information
+export interface WeatherData {
+  temperature: number;   // Temperature in Celsius
+  weatherCode: number;   // Weather code (see open-meteo API docs)
+  weatherDescription: string; // Text description of weather
+}
+
 // Types for MIDI events
 export type MidiEvent = 
   | { type: 'note'; note: Note; currentKey: string; currentScale: Scale }

@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { MidiEvent, Note } from '../shared/types';
+import { MidiEvent, Note, WeatherData } from '../shared/types';
 
 // Connect to the server
 const socket = io();
@@ -13,6 +13,8 @@ const currentKeyDisplay = document.getElementById('current-key') as HTMLElement;
 const currentScaleDisplay = document.getElementById('current-scale') as HTMLElement;
 const notesPlayingDisplay = document.getElementById('notes-playing') as HTMLElement;
 const pedalsStatusDisplay = document.getElementById('pedals-status') as HTMLElement;
+const weatherInfoDisplay = document.getElementById('weather-info') as HTMLElement;
+const weatherImpactDisplay = document.getElementById('weather-impact') as HTMLElement;
 const consoleOutput = document.getElementById('console-output') as HTMLElement;
 
 // AudioContext and MIDI
@@ -30,6 +32,11 @@ const pedalStatus = {
 
 // Piano state
 let notesPlaying: Note[] = [];
+
+// Weather state
+let currentWeather: WeatherData | null = null;
+let weatherUpdateInterval: number | null = null;
+const WEATHER_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
 // Initialize audio
 function initAudio() {
@@ -67,6 +74,174 @@ async function initMidi() {
     logToConsole(`Error initializing MIDI: ${error}`);
     return false;
   }
+}
+
+// Get user's location using the Geolocation API
+async function getUserLocation(): Promise<{ latitude: number, longitude: number } | null> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      logToConsole('Geolocation not supported in this browser');
+      resolve(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      },
+      (error) => {
+        logToConsole(`Geolocation error: ${error.message}`);
+        resolve(null);
+      },
+      { timeout: 10000 }
+    );
+  });
+}
+
+// Fetch weather data from Open-Meteo API
+async function fetchWeatherData(latitude: number, longitude: number): Promise<WeatherData | null> {
+  try {
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Weather API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Map the weather code to a description
+    const weatherDescription = getWeatherDescription(data.current.weather_code);
+    
+    return {
+      temperature: data.current.temperature_2m,
+      weatherCode: data.current.weather_code,
+      weatherDescription
+    };
+  } catch (error) {
+    logToConsole(`Error fetching weather: ${error}`);
+    return null;
+  }
+}
+
+// Get weather description from code based on WMO codes
+function getWeatherDescription(code: number): string {
+  // WMO Weather interpretation codes (WW)
+  const weatherCodes: Record<number, string> = {
+    0: 'Clear sky',
+    1: 'Mainly clear',
+    2: 'Partly cloudy',
+    3: 'Overcast',
+    45: 'Fog',
+    48: 'Depositing rime fog',
+    51: 'Light drizzle',
+    53: 'Moderate drizzle',
+    55: 'Dense drizzle',
+    56: 'Light freezing drizzle',
+    57: 'Dense freezing drizzle',
+    61: 'Slight rain',
+    63: 'Moderate rain',
+    65: 'Heavy rain',
+    66: 'Light freezing rain',
+    67: 'Heavy freezing rain',
+    71: 'Slight snow fall',
+    73: 'Moderate snow fall',
+    75: 'Heavy snow fall',
+    77: 'Snow grains',
+    80: 'Slight rain showers',
+    81: 'Moderate rain showers',
+    82: 'Violent rain showers',
+    85: 'Slight snow showers',
+    86: 'Heavy snow showers',
+    95: 'Thunderstorm',
+    96: 'Thunderstorm with slight hail',
+    99: 'Thunderstorm with heavy hail',
+  };
+  
+  return weatherCodes[code] || 'Unknown';
+}
+
+// Update weather info in UI
+function updateWeatherDisplay(weather: WeatherData) {
+  weatherInfoDisplay.textContent = `${weather.temperature}°C, ${weather.weatherDescription}`;
+  
+  // Update weather impact description
+  updateWeatherImpactDisplay(weather);
+}
+
+// Update weather impact description in UI
+function updateWeatherImpactDisplay(weather: WeatherData) {
+  let impact = [];
+  
+  // Temperature impact
+  if (weather.temperature < 0) {
+    impact.push('Slower tempo, lower register');
+  } else if (weather.temperature < 10) {
+    impact.push('Minor scales, softer dynamics');
+  } else if (weather.temperature > 25) {
+    impact.push('Brighter scales, higher register');
+  } else if (weather.temperature > 30) {
+    impact.push('Faster tempo, more activity');
+  }
+  
+  // Weather condition impact
+  const code = weather.weatherCode;
+  if ([0, 1].includes(code)) { // Clear
+    impact.push('Sparse, bright notes');
+  } else if ([2, 3].includes(code)) { // Cloudy
+    impact.push('Varied dynamics, moderate activity');
+  } else if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) { // Rain
+    impact.push('More sustain pedal, softer attacks');
+  } else if ([71, 73, 75, 77, 85, 86].includes(code)) { // Snow
+    impact.push('Slower, gentler passages');
+  } else if ([95, 96, 99].includes(code)) { // Thunderstorm
+    impact.push('Dramatic dynamics, cluster chords');
+  }
+  
+  weatherImpactDisplay.textContent = impact.join(', ');
+}
+
+// Initialize weather updates
+async function initWeatherUpdates() {
+  // Stop any existing interval
+  if (weatherUpdateInterval !== null) {
+    clearInterval(weatherUpdateInterval);
+  }
+  
+  // First update
+  await updateWeather();
+  
+  // Set interval for updates
+  weatherUpdateInterval = window.setInterval(updateWeather, WEATHER_UPDATE_INTERVAL);
+}
+
+// Update weather and send to server
+async function updateWeather() {
+  const location = await getUserLocation();
+  if (!location) {
+    return;
+  }
+  
+  const weatherData = await fetchWeatherData(location.latitude, location.longitude);
+  if (!weatherData) {
+    return;
+  }
+  
+  // Update current weather state
+  currentWeather = weatherData;
+  
+  // Update UI
+  updateWeatherDisplay(weatherData);
+  
+  // Send to server
+  socket.emit('weather', weatherData);
+  logToConsole(`Weather updated: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`);
+  
+  return weatherData;
 }
 
 // Play a note using Web Audio API
@@ -167,6 +342,12 @@ function stopAllNotes() {
   if (midiOutput) {
     // Send All Notes Off message
     midiOutput.send([0xB0, 123, 0]);
+    
+    // Send Note Off messages for all possible MIDI notes (0-127)
+    // This ensures any stuck notes are definitely turned off
+    for (let i = 0; i < 128; i++) {
+      midiOutput.send([0x80, i, 0]);  // Note Off for each MIDI note
+    }
   }
   
   // Reset all pedals to 0
@@ -237,7 +418,32 @@ function createNoteVisualization(note: Note) {
   
   // Set color intensity based on velocity
   const intensity = Math.floor((note.velocity / 127) * 100);
-  noteElement.style.backgroundColor = `hsl(120, 100%, ${intensity}%)`;
+  
+  // Modify color based on weather if available
+  let hue = 120; // Default green
+  if (currentWeather) {
+    // Adjust hue based on temperature: colder = blue (240), hotter = red (0)
+    if (currentWeather.temperature < 0) {
+      hue = 240; // Blue for very cold
+    } else if (currentWeather.temperature < 10) {
+      hue = 180; // Cyan for cool
+    } else if (currentWeather.temperature > 30) {
+      hue = 0; // Red for very hot
+    } else if (currentWeather.temperature > 25) {
+      hue = 60; // Yellow for warm
+    }
+    
+    // Adjust saturation based on weather conditions
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(currentWeather.weatherCode)) {
+      // Rainy conditions, more blue
+      hue = Math.max(hue, 180);
+    } else if ([95, 96, 99].includes(currentWeather.weatherCode)) {
+      // Stormy conditions, more purple
+      hue = 270;
+    }
+  }
+  
+  noteElement.style.backgroundColor = `hsl(${hue}, 100%, ${intensity}%)`;
   
   visualization.appendChild(noteElement);
   
@@ -360,11 +566,20 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
   logToConsole('Disconnected from server');
+  // Clear weather update interval on disconnect
+  if (weatherUpdateInterval !== null) {
+    clearInterval(weatherUpdateInterval);
+    weatherUpdateInterval = null;
+  }
 });
 
 // Event listeners
-startButton.addEventListener('click', () => {
+startButton.addEventListener('click', async () => {
   initAudio();
+  
+  // Initialize weather before starting
+  await initWeatherUpdates();
+  
   if (outputSelect.value === 'midi') {
     initMidi().then(success => {
       if (success) {
@@ -402,6 +617,9 @@ outputSelect.addEventListener('change', () => {
 window.addEventListener('beforeunload', () => {
   socket.emit('stop');
   stopAllNotes();
+  if (weatherUpdateInterval !== null) {
+    clearInterval(weatherUpdateInterval);
+  }
 });
 
 // Initialization

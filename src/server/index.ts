@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { generateMidiEvent } from './music-generator';
+import { WeatherData } from '../shared/types';
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +28,7 @@ io.on('connection', (socket) => {
   
   let playing = false;
   let intervalId: NodeJS.Timeout | null = null;
+  let currentWeather: WeatherData | null = null;
 
   // Start streaming MIDI events
   socket.on('start', () => {
@@ -36,10 +38,16 @@ io.on('connection', (socket) => {
       
       // Generate MIDI events at regular intervals
       intervalId = setInterval(() => {
-        const event = generateMidiEvent();
+        const event = generateMidiEvent(currentWeather);
         socket.emit('midi', event);
       }, 100); // Generate events every 100ms (adjust as needed)
     }
+  });
+
+  // Handle weather updates from client
+  socket.on('weather', (weatherData: WeatherData) => {
+    console.log(`Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`);
+    currentWeather = weatherData;
   });
 
   // Stop streaming MIDI events
