@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Piano</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>PLAYER PIANO</h1>
+      <div class="controls">
+        <button id="stop-button" class="control-button">STOP</button>
+        <div class="toggle-container">
+          <span>Browser Audio</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="output-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <span>MIDI Out</span>
+        </div>
+      </div>
+    </header>
+    
+    <div class="visualization-container">
+      <div id="piano-visualization"></div>
+      <div id="data-display" class="retro-terminal">
+        <div class="terminal-header">
+          <span>DATA STREAM</span>
+        </div>
+        <div id="terminal-content"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
