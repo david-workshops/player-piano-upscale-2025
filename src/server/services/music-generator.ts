@@ -5,7 +5,7 @@ import {
   PedalType, 
   MusicalContext,
   MusicalEvent
-} from '../shared/types/music';
+} from '../../shared/types/music';
 
 import {
   getScale,
@@ -14,7 +14,7 @@ import {
   generateRandomContext,
   SCALES,
   MODES
-} from '../shared/utils/music-theory';
+} from '../../shared/utils/music-theory';
 
 /**
  * Service responsible for generating musical content
