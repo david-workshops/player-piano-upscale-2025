@@ -30,9 +30,9 @@ export function initAudio(): AudioEngine {
   piano.connect(reverb);
   
   // Active notes for sustain pedal
-  const activeNotes = new Map<number, Tone.ToneEvent>();
+  const activeNotes = new Map<number, number>(); // Store Tone.Transport event IDs
   let sustainOn = false;
-  
+
   // Convert MIDI note to frequency
   const midiToFreq = (note: number): string => {
     return Tone.Frequency(note, "midi").toNote();
@@ -66,7 +66,7 @@ export function initAudio(): AudioEngine {
         activeNotes.set(note, event);
       } else {
         // If sustain is on, store the note without scheduling release
-        activeNotes.set(note, new Tone.ToneEvent());
+        activeNotes.set(note, -1); // Use a dummy value since we don't have an event ID
       }
     },
     
@@ -79,8 +79,10 @@ export function initAudio(): AudioEngine {
         const now = Tone.now();
         
         // Release all sustained notes
-        activeNotes.forEach((event, note) => {
-          Tone.Transport.clear(event);
+        activeNotes.forEach((eventId, note) => {
+          if (eventId !== -1) {
+            Tone.Transport.clear(eventId);
+          }
           piano.triggerRelease(midiToFreq(note));
         });
         
@@ -91,8 +93,10 @@ export function initAudio(): AudioEngine {
     
     allNotesOff: () => {
       // Clear all scheduled events
-      activeNotes.forEach(event => {
-        Tone.Transport.clear(event);
+      activeNotes.forEach(eventId => {
+        if (eventId !== -1) {
+          Tone.Transport.clear(eventId);
+        }
       });
       
       // Release all notes
