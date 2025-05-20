@@ -8,6 +8,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "ts-node-dev --respawn --transpile-only src/server/index.ts",
     "dev:client": "vite",
+    "dev:visual": "vite --config vite.visual.config.ts",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:visual\"",
     "start": "node dist/server/index.js",
     "test": "jest",
     "test:e2e": "cypress run",

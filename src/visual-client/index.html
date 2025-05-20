@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piano Visualizer</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="AI-generated visualizations based on player piano music">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PIANO VISUALIZER</h1>
+      <p class="subtitle">AI-GENERATED IMAGERY</p>
+    </header>
+
+    <div class="visualization-container">
+      <div class="visualization-wrapper">
+        <div id="current-image" class="visualization-image"></div>
+        <div id="next-image" class="visualization-image"></div>
+      </div>
+      <div class="image-info" aria-live="polite">
+        <div class="info-row">
+          <span class="info-label">PROMPT:</span>
+          <span id="prompt-info" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">NOTES INFLUENCING:</span>
+          <span id="notes-info" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">WEATHER:</span>
+          <span id="weather-info" class="info-value">--</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <button id="start-btn" class="btn" aria-label="Start visualization">START</button>
+        <button id="stop-btn" class="btn" aria-label="Stop visualization">STOP</button>
+      </div>
+      <div class="control-group">
+        <a href="http://localhost:5173" class="btn" aria-label="Go to piano interface">PIANO INTERFACE</a>
+      </div>
+    </div>
+
+    <div id="console-output" class="console-output" aria-live="polite"></div>
+  </div>
+  
+  <script type="module" src="index.ts"></script>
+</body>
+</html>
