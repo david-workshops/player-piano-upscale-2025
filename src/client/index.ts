@@ -49,8 +49,19 @@ let isPlaying = false;
 const activeNotes: Set<number> = new Set();
 
 // Handle start button
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', async () => {
   if (isPlaying) return;
+  
+  // First start the audio context when using browser output
+  if (outputModeSelect.value === 'browser') {
+    try {
+      await audioEngine.startAudio();
+    } catch (error) {
+      console.error('Failed to start audio context:', error);
+      visualizer.log('ERROR: Failed to start audio context. Please try again.');
+      return;
+    }
+  }
   
   // Start stream without specific options - server will choose automatically
   socket.emit('startStream', {});
@@ -174,6 +185,20 @@ function stopAllNotes() {
     audioEngine.allNotesOff();
   } else if (outputMode === 'midi' && midiOutput.output) {
     midiOutput.output.stopNote('all');
+// Handle output mode change
+outputModeSelect.addEventListener('change', async (e) => {
+  const mode = (e.target as HTMLSelectElement).value;
+  visualizer.log(`OUTPUT MODE CHANGED: ${mode.toUpperCase()}`);
+  
+  // If changing to browser mode and already playing, ensure audio is started
+  if (mode === 'browser' && isPlaying) {
+    try {
+      await audioEngine.startAudio();
+    } catch (error) {
+      console.error('Failed to start audio context:', error);
+    }
+  }
+});
     
     // Also send all sounds off message (CC 120)
     midiOutput.output.sendControlChange(120, 0, 0);

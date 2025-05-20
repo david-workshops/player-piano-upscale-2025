@@ -4,14 +4,10 @@ interface AudioEngine {
   playNote: (note: number, velocity: number, duration: number) => void;
   setSustain: (on: boolean) => void;
   allNotesOff: () => void;
+  startAudio: () => Promise<void>;
 }
 
 export function initAudio(): AudioEngine {
-  // Initialize Tone.js
-  // In a browser environment, this ensures AudioContext is created
-  // only after user interaction
-  Tone.start();
-
   // Create a polyphonic synthesizer without specifying constructor arguments
   // This will use defaults that work in both Node.js and browser environments
   const piano = new Tone.PolySynth().toDestination();
@@ -113,6 +109,12 @@ export function initAudio(): AudioEngine {
       
       // Clear active notes
       activeNotes.clear();
+    },
+    
+    startAudio: async () => {
+      // This method will be called after user interaction to start audio context
+      await Tone.start();
+      console.log('Audio context started');
     }
   };
 }

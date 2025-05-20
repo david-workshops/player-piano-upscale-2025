@@ -6714,10 +6714,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.initAudio = initAudio;
 const Tone = __importStar(__webpack_require__(/*! tone */ "./node_modules/tone/build/Tone.js"));
 function initAudio() {
-    // Initialize Tone.js
-    // In a browser environment, this ensures AudioContext is created
-    // only after user interaction
-    Tone.start();
     // Create a polyphonic synthesizer without specifying constructor arguments
     // This will use defaults that work in both Node.js and browser environments
     const piano = new Tone.PolySynth().toDestination();
@@ -6801,6 +6797,11 @@ function initAudio() {
             sustainOn = false;
             // Clear active notes
             activeNotes.clear();
+        },
+        startAudio: async () => {
+            // This method will be called after user interaction to start audio context
+            await Tone.start();
+            console.log('Audio context started');
         }
     };
 }
@@ -6843,9 +6844,20 @@ const currentModeElement = document.getElementById('currentMode');
 let isPlaying = false;
 const activeNotes = new Set();
 // Handle start button
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', async () => {
     if (isPlaying)
         return;
+    // First start the audio context when using browser output
+    if (outputModeSelect.value === 'browser') {
+        try {
+            await audioEngine.startAudio();
+        }
+        catch (error) {
+            console.error('Failed to start audio context:', error);
+            visualizer.log('ERROR: Failed to start audio context. Please try again.');
+            return;
+        }
+    }
     // Start stream without specific options - server will choose automatically
     socket.emit('startStream', {});
     isPlaying = true;
@@ -6952,6 +6964,20 @@ function stopAllNotes() {
     }
     else if (outputMode === 'midi' && midiOutput.output) {
         midiOutput.output.stopNote('all');
+        // Handle output mode change
+        outputModeSelect.addEventListener('change', async (e) => {
+            const mode = e.target.value;
+            visualizer.log(`OUTPUT MODE CHANGED: ${mode.toUpperCase()}`);
+            // If changing to browser mode and already playing, ensure audio is started
+            if (mode === 'browser' && isPlaying) {
+                try {
+                    await audioEngine.startAudio();
+                }
+                catch (error) {
+                    console.error('Failed to start audio context:', error);
+                }
+            }
+        });
         // Also send all sounds off message (CC 120)
         midiOutput.output.sendControlChange(120, 0, 0);
         // Reset all controllers (CC 121)
