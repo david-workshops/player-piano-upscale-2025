@@ -23,33 +23,47 @@ export interface MidiEvent {
   timestamp: number;
 }
 
+/**
+ * Handles streaming of MIDI events to connected clients
+ */
 export class MidiStreamer {
   private io: Server;
   private streamInterval: NodeJS.Timeout | null = null;
   private musicGenerator: MusicGenerator;
   
+  /**
+   * Creates a new MIDI streamer
+   * @param io Socket.IO server instance for streaming events
+   */
   constructor(io: Server) {
     this.io = io;
-    this.musicGenerator = new MusicGenerator();
+    
+    // Create music generator with callback for parameter changes
+    this.musicGenerator = new MusicGenerator((params) => {
+      // Emit parameter changes to all clients
+      this.io.emit('musicParametersChanged', params);
+    });
   }
   
+  /**
+   * Starts streaming MIDI events
+   * @param options Optional parameters (unused in auto mode)
+   */
   public startStreaming(options: { key?: string; scale?: string; mode?: string } = {}): void {
     if (this.streamInterval) {
       clearInterval(this.streamInterval);
     }
     
-    // Set music generator options
-    if (options.key) this.musicGenerator.setKey(options.key);
-    if (options.scale) this.musicGenerator.setScale(options.scale);
-    if (options.mode) this.musicGenerator.setMode(options.mode);
-    
     // Start streaming at regular intervals
     this.streamInterval = setInterval(() => {
       const event = this.musicGenerator.generateNextEvent();
       this.io.emit('midiEvent', event);
-    }, 1000); // Adjust timing as needed
+    }, 1000); // Generate a new event every second
   }
   
+  /**
+   * Stops streaming MIDI events
+   */
   public stopStreaming(): void {
     if (this.streamInterval) {
       clearInterval(this.streamInterval);
@@ -58,5 +72,17 @@ export class MidiStreamer {
       // Send all notes off message
       this.io.emit('allNotesOff');
     }
+  }
+  
+  /**
+   * Gets the current musical parameters
+   * @returns Current key, scale, and mode
+   */
+  public getCurrentMusicalParameters(): { key: string; scale: string; mode: string } {
+    return {
+      key: this.musicGenerator.getCurrentKey(),
+      scale: this.musicGenerator.getCurrentScale(),
+      mode: this.musicGenerator.getCurrentMode()
+    };
   }
 }

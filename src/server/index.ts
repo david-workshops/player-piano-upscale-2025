@@ -25,10 +25,18 @@ const midiStreamer = new MidiStreamer(io);
 io.on('connection', (socket) => {
   console.log('A client connected');
   
+  // Send current musical parameters
+  const currentParams = {
+    key: midiStreamer.getCurrentMusicalParameters().key,
+    scale: midiStreamer.getCurrentMusicalParameters().scale,
+    mode: midiStreamer.getCurrentMusicalParameters().mode
+  };
+  socket.emit('musicParametersChanged', currentParams);
+  
   // Start streaming when a client requests it
-  socket.on('startStream', (options: { key?: string; scale?: string; mode?: string }) => {
-    console.log('Starting stream with options:', options);
-    midiStreamer.startStreaming(options);
+  socket.on('startStream', () => {
+    console.log('Starting stream in auto mode');
+    midiStreamer.startStreaming();
   });
   
   // Stop streaming when requested

@@ -32,6 +32,30 @@ export class ScaleGenerator {
     // Initialize with default settings
   }
   
+  /**
+   * Get the current key
+   * @returns The current musical key
+   */
+  public getCurrentKey(): string {
+    return this.key;
+  }
+  
+  /**
+   * Get the current scale
+   * @returns The current musical scale
+   */
+  public getCurrentScale(): string {
+    return this.scale;
+  }
+  
+  /**
+   * Get the current mode
+   * @returns The current musical mode
+   */
+  public getCurrentMode(): string {
+    return this.mode;
+  }
+  
   public setKey(key: string): void {
     if (this.allKeys.includes(key)) {
       this.key = key;

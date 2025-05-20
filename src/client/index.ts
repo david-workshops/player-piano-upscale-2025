@@ -1,10 +1,33 @@
 import { initAudio } from './audio/piano';
 import { Visualizer } from './visualization/visualizer';
 import { setupMidiOutput } from './ui/controls';
-import { io, Socket } from 'socket.io-client';
+import { io, Socket as SocketIOClient } from 'socket.io-client';
+
+// Define interfaces for MIDI events
+interface MidiNote {
+  note: number;
+  velocity: number;
+  duration: number;
+  channel?: number;
+}
+
+interface MidiChord {
+  notes: MidiNote[];
+}
+
+interface PedalEvent {
+  type: 'sustain' | 'sostenuto' | 'soft';
+  value: number;
+}
+
+interface MidiEvent {
+  type: 'note' | 'chord' | 'pedal';
+  data: MidiNote | MidiChord | PedalEvent;
+  timestamp: number;
+}
 
 // Socket.io connection
-const socket: Socket = io();
+const socket: SocketIOClient = io();
 
 // Initialize modules
 const audioEngine = initAudio();
@@ -14,11 +37,11 @@ const midiOutput = setupMidiOutput();
 // UI Elements
 const startBtn = document.getElementById('startBtn') as HTMLButtonElement;
 const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement;
-const keySelect = document.getElementById('key') as HTMLSelectElement;
-const scaleSelect = document.getElementById('scale') as HTMLSelectElement;
-const modeSelect = document.getElementById('mode') as HTMLSelectElement;
 const outputModeSelect = document.getElementById('outputMode') as HTMLSelectElement;
 const statusElement = document.getElementById('status') as HTMLDivElement;
+const currentKeyElement = document.getElementById('currentKey') as HTMLSpanElement;
+const currentScaleElement = document.getElementById('currentScale') as HTMLSpanElement;
+const currentModeElement = document.getElementById('currentMode') as HTMLSpanElement;
 
 // Current state
 let isPlaying = false;
@@ -28,17 +51,12 @@ let activeNotes: Set<number> = new Set();
 startBtn.addEventListener('click', () => {
   if (isPlaying) return;
   
-  const options = {
-    key: keySelect.value,
-    scale: scaleSelect.value,
-    mode: modeSelect.value
-  };
-  
-  socket.emit('startStream', options);
+  // Start stream without specific options - server will choose automatically
+  socket.emit('startStream', {});
   isPlaying = true;
-  statusElement.textContent = `STATUS: PLAYING - ${options.key} ${options.scale} ${options.mode}`;
+  statusElement.textContent = 'STATUS: PLAYING - Auto mode';
   visualizer.log('STREAMING STARTED...');
-  visualizer.log(`CONFIGURATION: KEY=${options.key}, SCALE=${options.scale}, MODE=${options.mode}`);
+  visualizer.log('CONFIGURATION: Auto-changing key, scale, and mode');
 });
 
 // Handle stop button
@@ -55,7 +73,7 @@ stopBtn.addEventListener('click', () => {
 });
 
 // Handle incoming MIDI events
-socket.on('midiEvent', (event) => {
+socket.on('midiEvent', (event: MidiEvent) => {
   // Display in visualizer
   visualizer.visualizeMIDIEvent(event);
   
@@ -128,6 +146,21 @@ socket.on('midiEvent', (event) => {
 // Handle all notes off message
 socket.on('allNotesOff', () => {
   stopAllNotes();
+});
+
+// Handle music parameter changes
+socket.on('musicParametersChanged', (params: { key: string; scale: string; mode: string }) => {
+  // Update the UI with current settings
+  currentKeyElement.textContent = params.key;
+  currentScaleElement.textContent = params.scale;
+  currentModeElement.textContent = params.mode;
+  
+  // Log the change
+  visualizer.log(`MUSIC CHANGED: KEY=${params.key}, SCALE=${params.scale}, MODE=${params.mode}`);
+  
+  if (isPlaying) {
+    statusElement.textContent = `STATUS: PLAYING - ${params.key} ${params.scale} ${params.mode}`;
+  }
 });
 
 // Stop all active notes

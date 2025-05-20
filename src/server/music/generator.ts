@@ -12,32 +12,41 @@ export class MusicGenerator {
   private silenceProbability = 0.2; // Probability of a silence
   private chordProbability = 0.4;   // Probability of playing a chord
   private pedalProbability = 0.1;   // Probability of a pedal event
-  private keyChangeInterval = 5 * 60 * 1000; // 5 minutes in milliseconds
+  private keyChangeInterval = 60 * 1000; // 1 minute in milliseconds (reduced from 5 min)
   private lastKeyChangeTime = Date.now();
+  private onParametersChanged: (params: { key: string; scale: string; mode: string }) => void;
   
-  constructor() {
+  /**
+   * Creates a new MusicGenerator that manages the generation of musical events
+   * @param onParametersChanged Callback function for when music parameters change
+   */
+  constructor(onParametersChanged?: (params: { key: string; scale: string; mode: string }) => void) {
     this.scaleGenerator = new ScaleGenerator();
+    this.onParametersChanged = onParametersChanged || (() => {});
+    
+    // Initial parameters notification
+    this.notifyParametersChanged();
   }
   
-  public setKey(key: string): void {
-    this.scaleGenerator.setKey(key);
-  }
-  
-  public setScale(scale: string): void {
-    this.scaleGenerator.setScale(scale);
-  }
-  
-  public setMode(mode: string): void {
-    this.scaleGenerator.setMode(mode);
+  /**
+   * Notifies listeners about current musical parameters
+   */
+  private notifyParametersChanged(): void {
+    this.onParametersChanged({
+      key: this.scaleGenerator.getCurrentKey(),
+      scale: this.scaleGenerator.getCurrentScale(),
+      mode: this.scaleGenerator.getCurrentMode()
+    });
   }
   
   public generateNextEvent(): MidiEvent {
     const now = Date.now();
     
-    // Occasionally change key/scale/mode (every 5 minutes)
+    // Occasionally change key/scale/mode
     if (now - this.lastKeyChangeTime > this.keyChangeInterval) {
       this.scaleGenerator.randomChange();
       this.lastKeyChangeTime = now;
+      this.notifyParametersChanged();
     }
     
     // Decide what type of event to generate
@@ -147,5 +156,29 @@ export class MusicGenerator {
       duration,
       channel: 0 // Default channel
     };
+  }
+  
+  /**
+   * Get the current key
+   * @returns The current musical key
+   */
+  public getCurrentKey(): string {
+    return this.scaleGenerator.getCurrentKey();
+  }
+  
+  /**
+   * Get the current scale
+   * @returns The current musical scale
+   */
+  public getCurrentScale(): string {
+    return this.scaleGenerator.getCurrentScale();
+  }
+  
+  /**
+   * Get the current mode
+   * @returns The current musical mode
+   */
+  public getCurrentMode(): string {
+    return this.scaleGenerator.getCurrentMode();
   }
 }
