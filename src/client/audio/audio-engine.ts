@@ -2,6 +2,8 @@
  * Audio Engine
  * Handles playback of MIDI notes using Web Audio API
  */
+/// <reference types="webmidi" />
+
 import { MidiChord, MidiNote, XPMidiParams } from '../../shared/types';
 
 type OutputMode = 'webaudio' | 'midi';

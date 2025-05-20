@@ -53,7 +53,16 @@ declare namespace WebMidi {
     clear(): void;
   }
 
-  type MIDIPortMap<T extends MIDIPort> = Map<string, T>;
+  interface MIDIPortMap<T extends MIDIPort> {
+    size: number;
+    entries(): IterableIterator<[string, T]>;
+    keys(): IterableIterator<string>;
+    values(): IterableIterator<T>;
+    forEach(callbackfn: (value: T, key: string, map: MIDIPortMap<T>) => void, thisArg?: any): void;
+    get(id: string): T | undefined;
+    has(id: string): boolean;
+  }
+  
   type MIDIInputMap = MIDIPortMap<MIDIInput>;
   type MIDIOutputMap = MIDIPortMap<MIDIOutput>;
 }
