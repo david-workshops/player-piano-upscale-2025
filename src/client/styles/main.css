@@ -1,0 +1,245 @@
+/* Main CSS Styles */
+:root {
+  --primary-color: #2c3e50;
+  --secondary-color: #34495e;
+  --accent-color: #3498db;
+  --text-color: #ecf0f1;
+  --background-color: #1a1a1a;
+  --display-background: #102030;
+  --display-text: #00ff66;
+  --white-key-color: #f5f5f5;
+  --black-key-color: #333;
+  --active-key-color: #3498db;
+  --key-border: #ddd;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Courier New', monospace;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: var(--primary-color);
+  border-radius: 5px;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+/* Piano keyboard styles */
+.piano-container {
+  margin-bottom: 30px;
+  overflow-x: auto;
+}
+
+#piano-keyboard {
+  display: flex;
+  position: relative;
+  height: 200px;
+  min-width: 100%;
+  background-color: var(--secondary-color);
+  border-radius: 5px;
+  padding: 10px;
+}
+
+.piano-key {
+  position: relative;
+  border: 1px solid var(--key-border);
+  transition: background-color 0.1s;
+}
+
+.white-key {
+  background-color: var(--white-key-color);
+  height: 180px;
+  flex: 1;
+  z-index: 1;
+  color: black;
+  border-radius: 0 0 5px 5px;
+}
+
+.black-key {
+  background-color: var(--black-key-color);
+  height: 120px;
+  width: 30px;
+  z-index: 2;
+  margin-left: -15px;
+  margin-right: -15px;
+  border-radius: 0 0 3px 3px;
+}
+
+.key-active {
+  background-color: var(--active-key-color);
+}
+
+/* Control panel styles */
+.controls {
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.control-panel {
+  display: flex;
+  gap: 20px;
+  padding: 15px;
+  background-color: var(--primary-color);
+  border-radius: 5px;
+  align-items: center;
+}
+
+.control-button {
+  padding: 10px 20px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.control-button:hover {
+  background-color: #c0392b;
+}
+
+.output-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+select {
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  padding: 8px;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+}
+
+/* Visualization styles */
+.visualization {
+  margin-bottom: 30px;
+}
+
+.visualization-container {
+  background-color: var(--primary-color);
+  padding: 20px;
+  border-radius: 5px;
+}
+
+.visualization-container h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.retro-display {
+  background-color: var(--display-background);
+  color: var(--display-text);
+  padding: 20px;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 0 10px rgba(0, 255, 102, 0.3);
+  overflow: hidden;
+}
+
+.info-row {
+  margin-bottom: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.label {
+  font-weight: bold;
+  min-width: 100px;
+}
+
+.value {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 5px 10px;
+  border-radius: 3px;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Footer styles */
+footer {
+  text-align: center;
+  padding: 20px;
+  background-color: var(--primary-color);
+  border-radius: 5px;
+  margin-top: 30px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .control-panel {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .output-selector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .piano-container {
+    height: 150px;
+  }
+  
+  #piano-keyboard {
+    height: 150px;
+  }
+  
+  .white-key {
+    height: 130px;
+  }
+  
+  .black-key {
+    height: 80px;
+  }
+}
+
+/* Accessibility focus styles */
+button:focus,
+select:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* Animation for active keys */
+@keyframes keyPress {
+  0% { background-color: var(--active-key-color); }
+  100% { background-color: var(--active-key-color); opacity: 0.7; }
+}
+
+.key-active {
+  animation: keyPress 0.3s alternate infinite;
+}

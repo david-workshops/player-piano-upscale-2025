@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Piano</title>
+  <link rel="stylesheet" href="styles/main.css">
+  <meta name="description" content="A virtual player piano that plays generated minimalist counterpoint music">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Player Piano</h1>
+      <p>Minimalist counterpoint music that evolves over time</p>
+    </header>
+
+    <main>
+      <section class="piano-container">
+        <div id="piano-keyboard"></div>
+      </section>
+
+      <section class="controls">
+        <div class="control-panel">
+          <button id="stop-button" class="control-button" aria-label="Stop playback">
+            <span class="icon">■</span> Stop
+          </button>
+          
+          <div class="output-selector">
+            <label for="output-mode">Output:</label>
+            <select id="output-mode" aria-label="Select output mode">
+              <option value="browser">Browser Audio</option>
+              <option value="midi">MIDI Output</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="visualization">
+        <div class="visualization-container">
+          <h2>Currently Playing</h2>
+          <div id="visualization-display" class="retro-display">
+            <div id="musical-context" class="info-row">
+              <span class="label">CONTEXT:</span>
+              <span id="context-key" class="value">C</span>
+              <span id="context-scale" class="value">major</span>
+              <span id="context-mode" class="value">ionian</span>
+            </div>
+            <div id="active-notes" class="info-row">
+              <span class="label">NOTES:</span>
+              <span id="notes-display" class="value">-</span>
+            </div>
+            <div id="pedal-status" class="info-row">
+              <span class="label">PEDALS:</span>
+              <span id="damper-status" class="value">OFF</span>
+              <span id="sostenuto-status" class="value">OFF</span>
+              <span id="soft-status" class="value">OFF</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Uses the Web Audio API to synthesize piano sounds</p>
+    </footer>
+  </div>
+
+  <!-- Load socket.io client library from server -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Load our scripts -->
+  <script src="js/piano-audio.js"></script>
+  <script src="js/visualization.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
