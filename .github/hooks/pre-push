@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Run linting and tests before pushing
+echo "Running lint and tests before pushing..."
+
+# Run ESLint
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "ESLint failed! Fix the issues before pushing."
+  exit 1
+fi
+
+# Run tests
+npm test
+if [ $? -ne 0 ]; then
+  echo "Tests failed! Fix the issues before pushing."
+  exit 1
+fi
+
+# If we got here, everything passed
+echo "Lint and tests passed. Proceeding with push."
+exit 0

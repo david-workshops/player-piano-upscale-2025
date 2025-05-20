@@ -1,4 +1,4 @@
-import { Server, Socket } from 'socket.io';
+import { Server } from 'socket.io';
 import { MusicGenerator } from '../music/generator';
 
 export interface MidiNote {
@@ -47,9 +47,9 @@ export class MidiStreamer {
   
   /**
    * Starts streaming MIDI events
-   * @param options Optional parameters (unused in auto mode)
+   * @param _options Optional parameters (unused in auto mode)
    */
-  public startStreaming(options: { key?: string; scale?: string; mode?: string } = {}): void {
+  public startStreaming(_options: { key?: string; scale?: string; mode?: string } = {}): void {
     if (this.streamInterval) {
       clearInterval(this.streamInterval);
     }

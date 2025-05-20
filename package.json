@@ -10,7 +10,11 @@
     "start:dev": "concurrently \"npm run build:watch\" \"npm run dev\"",
     "build:watch": "tsc -w",
     "lint": "eslint . --ext .ts",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepare": "./scripts/install-hooks.sh",
+    "docs": "typedoc",
+    "docs:serve": "npx http-server docs"
   },
   "keywords": [
     "piano",
@@ -28,14 +32,18 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.10.0",
     "@types/socket.io-client": "^1.4.36",
     "@typescript-eslint/eslint-plugin": "^6.12.0",
     "@typescript-eslint/parser": "^6.12.0",
     "concurrently": "^9.1.2",
     "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.4",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
+    "typedoc": "^0.28.4",
     "typescript": "^5.3.2"
   }
 }

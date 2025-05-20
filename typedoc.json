@@ -1,0 +1,18 @@
+{
+  "entryPoints": [
+    "src/server/index.ts",
+    "src/server/midi/stream.ts",
+    "src/server/music/generator.ts",
+    "src/server/music/scales.ts",
+    "src/client/index.ts",
+    "src/client/audio/piano.ts",
+    "src/client/ui/controls.ts",
+    "src/client/visualization/visualizer.ts"
+  ],
+  "out": "docs",
+  "name": "Piano Project Documentation",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "includeVersion": true,
+  "readme": "README.md"
+}

@@ -45,7 +45,7 @@ const currentModeElement = document.getElementById('currentMode') as HTMLSpanEle
 
 // Current state
 let isPlaying = false;
-let activeNotes: Set<number> = new Set();
+const activeNotes: Set<number> = new Set();
 
 // Handle start button
 startBtn.addEventListener('click', () => {

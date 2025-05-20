@@ -8,7 +8,7 @@ A minimalist counterpoint piano music generator with a retro-styled interface.
 - Streams MIDI notes and chords from a Node.js server to a web client
 - Plays notes through the browser or MIDI output
 - Full piano range utilization without human playing restrictions
-- Key, scale, and mode controls with occasional automatic changes
+- Automatic key, scale, and mode changes with real-time display
 - Sustain, sostenuto, and soft pedal support
 - Real-time visualization with retro computer appearance
 
@@ -24,16 +24,17 @@ npm install
 
 ## Running the Project
 
-Build the TypeScript files:
+Build the TypeScript files and start the server:
 
 ```bash
 npm run build
+npm start
 ```
 
-Start the server:
+For development with concurrent server and client building:
 
 ```bash
-npm start
+npm run start:dev
 ```
 
 Then open your browser and navigate to:
@@ -42,22 +43,62 @@ Then open your browser and navigate to:
 http://localhost:3000
 ```
 
-## Development
-
-For development with hot reloading:
-
-```bash
-npm run dev
-```
-
 ## Controls
 
 - **Output Mode**: Choose between browser audio playback or MIDI output
-- **Key**: Select the musical key (C, C#, D, etc.)
-- **Scale**: Choose the scale (Major, Minor, Harmonic Minor, etc.)
-- **Mode**: Select the mode (Ionian, Dorian, Phrygian, etc.)
+- **Current Key/Scale/Mode**: Displays the current musical parameters
 - **Start**: Begin the music stream
 - **Stop**: End the music stream and turn off all active notes
+
+## Development
+
+### Testing
+
+Run the tests with:
+
+```bash
+npm test
+```
+
+Run the tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+### Linting
+
+Lint the code with:
+
+```bash
+npm run lint
+```
+
+### Documentation
+
+Generate TypeDoc documentation:
+
+```bash
+npm run docs
+```
+
+Serve the documentation locally:
+
+```bash
+npm run docs:serve
+```
+
+Then open your browser to http://localhost:8080 to view the documentation.
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration:
+
+- Linting checks
+- Unit tests
+- Build verification
+
+The workflow runs automatically on push to main branch and on pull requests.
 
 ## Requirements
 
