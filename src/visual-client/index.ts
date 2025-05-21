@@ -1,9 +1,6 @@
-import { io } from "socket.io-client";
-import { MidiEvent, Note, WeatherData } from "../shared/types";
+import { MusicStateEvent, musicState } from "../shared/music-state";
+import { WeatherData } from "../shared/types";
 import { FreepikService } from "./freepik-service";
-
-// Connect to the same server as the piano client
-const socket = io();
 
 // DOM elements
 const currentImageElement = document.getElementById(
@@ -30,7 +27,6 @@ const freepikService = new FreepikService(apiKey);
 // State variables
 let isPlaying = false;
 let imageUpdateInterval: number | null = null;
-let notesPlaying: Note[] = [];
 let fadeInProgress = false;
 
 // Constants
@@ -80,8 +76,8 @@ function startVisualization() {
     startImageRefresh();
   });
 
-  // Tell the server we're starting (it might send us current state)
-  socket.emit("start");
+  // Tell the server we're starting
+  musicState.start();
 }
 
 // Stop the visualization
@@ -90,7 +86,7 @@ function stopVisualization() {
 
   isPlaying = false;
   stopImageRefresh();
-  socket.emit("stop");
+  musicState.stop();
   logToConsole("Visualization stopped");
 }
 
@@ -193,6 +189,8 @@ function toggleDebugOverlay() {
 
 // Update the notes info display
 function updateNotesInfo() {
+  const notesPlaying = musicState.getNotesPlaying();
+  
   if (notesPlaying.length > 0) {
     const noteNames = notesPlaying
       .map((n) => `${n.name}${n.octave}`)
@@ -207,16 +205,13 @@ function updateNotesInfo() {
     notesInfoElement.textContent = "--";
     freepikService.updateNotes([], []);
   }
-
-  // Cleanup notes that are finished playing
-  const now = Date.now();
-  notesPlaying = notesPlaying.filter((note) => {
-    return (note._startTime || 0) + note.duration > now;
-  });
 }
 
 // Update weather info
-function updateWeatherInfo(weather: WeatherData) {
+function updateWeatherInfo() {
+  const weather = musicState.getWeatherData();
+  if (!weather) return;
+  
   weatherInfoElement.textContent = `${weather.temperature}°C, ${weather.weatherDescription}`;
 
   // Update the Freepik service with weather data
@@ -230,7 +225,27 @@ function logToConsole(message: string) {
   consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
 
-// Socket event handlers
+// Subscribe to music state events
+musicState.subscribe((event: MusicStateEvent) => {
+  switch (event.type) {
+    case "notes-updated":
+      updateNotesInfo();
+      break;
+      
+    case "weather-updated":
+      updateWeatherInfo();
+      break;
+      
+    case "all-notes-off":
+      // Update display to show no notes
+      updateNotesInfo();
+      break;
+  }
+});
+
+// Socket connection events
+const socket = musicState.getSocket();
+
 socket.on("connect", () => {
   logToConsole("Connected to server");
 
@@ -243,42 +258,6 @@ socket.on("disconnect", () => {
 
   // Auto-stop the visualization on disconnect
   stopVisualization();
-});
-
-// Handle MIDI events from server
-socket.on("midi", (event: MidiEvent) => {
-  switch (event.type) {
-    case "note":
-      // Add timestamp to the note for tracking
-      event.note._startTime = Date.now();
-      notesPlaying.push(event.note);
-      updateNotesInfo();
-      break;
-
-    case "chord":
-    case "counterpoint":
-      // Add all notes in the chord or counterpoint
-      event.notes.forEach((note) => {
-        // Add timestamp to the note for tracking
-        note._startTime = Date.now();
-        notesPlaying.push(note);
-      });
-      updateNotesInfo();
-      break;
-
-    case "allNotesOff":
-      notesPlaying = [];
-      updateNotesInfo();
-      break;
-  }
-});
-
-// Handle weather updates
-socket.on("weather", (weatherData: WeatherData) => {
-  updateWeatherInfo(weatherData);
-  logToConsole(
-    `Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
-  );
 });
 
 // Cleanup function
@@ -298,6 +277,10 @@ document.addEventListener("keydown", (event) => {
     toggleDebugOverlay();
   }
 });
+
+// Initialize displays with current state
+updateNotesInfo();
+updateWeatherInfo();
 
 // Initialization message
 logToConsole("Piano Visualizer initialized");

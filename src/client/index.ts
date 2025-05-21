@@ -1,8 +1,8 @@
-import { io } from "socket.io-client";
-import { MidiEvent, Note, WeatherData } from "../shared/types";
+import { MusicStateEvent, musicState } from "../shared/music-state";
+import { Note, WeatherData } from "../shared/types";
 
-// Connect to the server
-const socket = io();
+// Use the shared music state service
+const socket = musicState.getSocket();
 
 // DOM elements
 const startButton = document.getElementById("start-btn") as HTMLButtonElement;
@@ -40,18 +40,10 @@ const activeNotes: Map<
   { oscillator: OscillatorNode; gainNode: GainNode; endTime: number }
 > = new Map();
 
-// Pedal status
-const pedalStatus = {
-  sustain: 0,
-  sostenuto: 0,
-  soft: 0,
-};
-
-// Piano state
-let notesPlaying: Note[] = [];
+// Pedal status (reference from shared state)
+const pedalStatus = musicState.getPedalStatus();
 
 // Weather state
-let currentWeather: WeatherData | null = null;
 let weatherUpdateInterval: number | null = null;
 const WEATHER_UPDATE_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
@@ -269,14 +261,12 @@ async function updateWeather() {
     return;
   }
 
-  // Update current weather state
-  currentWeather = weatherData;
+  // Update shared weather state
+  musicState.setWeatherData(weatherData);
 
   // Update UI
   updateWeatherDisplay(weatherData);
 
-  // Send to server
-  socket.emit("weather", weatherData);
   logToConsole(
     `Weather updated: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
   );
@@ -290,6 +280,7 @@ function playNote(note: Note) {
   if (!audioContext || !gainNode) return;
 
   const now = audioContext.currentTime;
+  const pedals = musicState.getPedalStatus();
 
   // Create oscillator
   const oscillator = audioContext.createOscillator();
@@ -314,7 +305,7 @@ function playNote(note: Note) {
   noteGain.gain.linearRampToValueAtTime(velocityGain, now + attackTime);
 
   // Calculate end time based on sustain pedal
-  const sustainMultiplier = pedalStatus.sustain > 0.5 ? 3 : 1;
+  const sustainMultiplier = pedals.sustain > 0.5 ? 3 : 1;
   const noteDuration = (note.duration / 1000) * sustainMultiplier;
   const endTime = now + noteDuration;
 
@@ -341,9 +332,6 @@ function playNote(note: Note) {
     (noteDuration + 0.2) * 1000,
   );
 
-  // Add to notes playing
-  notesPlaying.push(note);
-
   // Create visualization element
   createNoteVisualization(note);
 }
@@ -359,9 +347,6 @@ function playMidiNote(note: Note) {
   setTimeout(() => {
     midiOutput?.send([0x80, note.midiNumber, 0]);
   }, note.duration);
-
-  // Add to notes playing
-  notesPlaying.push(note);
 
   // Create visualization element
   createNoteVisualization(note);
@@ -396,8 +381,7 @@ function stopAllNotes() {
   // Reset all pedals to 0
   resetAllPedals();
 
-  // Clear notes playing
-  notesPlaying = [];
+  // Clear notes playing display
   notesPlayingDisplay.textContent = "--";
 
   // Clear visualization
@@ -464,6 +448,7 @@ function createNoteVisualization(note: Note) {
 
   // Modify color based on weather if available
   let hue = 120; // Default green
+  const currentWeather = musicState.getWeatherData();
   if (currentWeather) {
     // Adjust hue based on temperature: colder = blue (240), hotter = red (0)
     if (currentWeather.temperature < 0) {
@@ -506,6 +491,7 @@ function createNoteVisualization(note: Note) {
 // Update pedal display
 function updatePedalDisplay() {
   const pedals = [];
+  const pedalStatus = musicState.getPedalStatus();
 
   if (pedalStatus.sustain > 0) {
     pedals.push(`SUSTAIN: ${Math.floor(pedalStatus.sustain * 100)}%`);
@@ -523,6 +509,8 @@ function updatePedalDisplay() {
 
 // Update notes playing display
 function updateNotesPlayingDisplay() {
+  const notesPlaying = musicState.getNotesPlaying();
+  
   if (notesPlaying.length > 0) {
     const noteNames = notesPlaying
       .map((n) => `${n.name}${n.octave}`)
@@ -531,12 +519,6 @@ function updateNotesPlayingDisplay() {
   } else {
     notesPlayingDisplay.textContent = "--";
   }
-
-  // Cleanup notes that are finished playing
-  const now = Date.now();
-  notesPlaying = notesPlaying.filter((note) => {
-    return (note._startTime || 0) + note.duration > now;
-  });
 }
 
 // Convert MIDI note number to frequency
@@ -551,62 +533,75 @@ function logToConsole(message: string) {
   consoleOutput.scrollTop = consoleOutput.scrollHeight;
 }
 
-// Handle MIDI events from server
-socket.on("midi", (event: MidiEvent) => {
+// Subscribe to music state events
+musicState.subscribe((event: MusicStateEvent) => {
   const output = outputSelect.value;
-
+  
   switch (event.type) {
-    case "note":
-      // Update key and scale display
-      currentKeyDisplay.textContent = event.currentKey;
-      currentScaleDisplay.textContent = event.currentScale;
-
-      // Add timestamp to the note for tracking
-      event.note._startTime = Date.now();
-
-      // Play the note using selected output
-      if (output === "browser") {
-        playNote(event.note);
-      } else if (output === "midi" && midiOutput) {
-        playMidiNote(event.note);
-      }
-      logToConsole(`Playing note: ${event.note.name}${event.note.octave}`);
-      break;
-
-    case "chord":
-    case "counterpoint":
-      // Update key and scale display
-      currentKeyDisplay.textContent = event.currentKey;
-      currentScaleDisplay.textContent = event.currentScale;
-
-      // Play all notes in the chord or counterpoint
-      event.notes.forEach((note) => {
-        // Add timestamp to the note for tracking
-        note._startTime = Date.now();
-
-        if (output === "browser") {
-          playNote(note);
-        } else if (output === "midi" && midiOutput) {
-          playMidiNote(note);
+    case "notes-updated":
+      // Update UI with current notes
+      updateNotesPlayingDisplay();
+      
+      // Play the latest notes
+      const notes = musicState.getNotesPlaying();
+      if (notes.length > 0) {
+        // Find the most recently added notes (ones with the highest _startTime)
+        const now = Date.now();
+        const recentNotes = notes.filter(note => (note._startTime || 0) > now - 50);
+        
+        recentNotes.forEach(note => {
+          // Play the note using selected output
+          if (output === "browser") {
+            playNote(note);
+          } else if (output === "midi" && midiOutput) {
+            playMidiNote(note);
+          }
+          
+          if (recentNotes.length === 1) {
+            logToConsole(`Playing note: ${note.name}${note.octave}`);
+          }
+        });
+        
+        if (recentNotes.length > 1) {
+          logToConsole(`Playing ${recentNotes.length} notes`);
         }
-      });
-      logToConsole(`Playing ${event.type}: ${event.notes.length} notes`);
+      }
       break;
-
-    case "pedal":
-      handlePedal(event.pedal.type, event.pedal.value);
-      logToConsole(
-        `Pedal: ${event.pedal.type} ${Math.floor(event.pedal.value * 100)}%`,
-      );
+      
+    case "key-updated":
+      // Update key and scale display
+      currentKeyDisplay.textContent = musicState.getCurrentKey();
+      currentScaleDisplay.textContent = musicState.getCurrentScale();
       break;
-
-    case "allNotesOff":
+      
+    case "pedals-updated":
+      // Update pedal display
+      updatePedalDisplay();
+      
+      // Handle MIDI pedal updates
+      const pedals = musicState.getPedalStatus();
+      if (midiOutput) {
+        // Send MIDI CC messages for pedals
+        midiOutput.send([0xb0, 64, Math.floor(pedals.sustain * 127)]);
+        midiOutput.send([0xb0, 66, Math.floor(pedals.sostenuto * 127)]);
+        midiOutput.send([0xb0, 67, Math.floor(pedals.soft * 127)]);
+      }
+      
+      logToConsole(`Pedal status updated`);
+      break;
+      
+    case "weather-updated":
+      // Update weather display
+      const weatherData = musicState.getWeatherData();
+      if (weatherData) {
+        updateWeatherDisplay(weatherData);
+      }
+      break;
+      
+    case "all-notes-off":
+      // Stop all notes
       stopAllNotes();
       logToConsole("All notes off");
-      break;
-
-    case "silence":
-      logToConsole(`Silence: ${event.duration}ms`);
       break;
   }
 });
@@ -635,22 +630,22 @@ startButton.addEventListener("click", async () => {
   if (outputSelect.value === "midi") {
     initMidi().then((success) => {
       if (success) {
-        socket.emit("start");
+        musicState.start();
         logToConsole("Starting MIDI stream - MIDI output");
       } else {
         outputSelect.value = "browser";
-        socket.emit("start");
+        musicState.start();
         logToConsole("MIDI not available, falling back to browser audio");
       }
     });
   } else {
-    socket.emit("start");
+    musicState.start();
     logToConsole("Starting MIDI stream - Browser audio");
   }
 });
 
 stopButton.addEventListener("click", () => {
-  socket.emit("stop");
+  musicState.stop();
   logToConsole("Stopping MIDI stream");
 });
 
