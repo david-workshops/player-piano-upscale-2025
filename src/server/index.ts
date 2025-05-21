@@ -153,6 +153,17 @@ io.on("connection", (socket) => {
     }
     console.log("Client disconnected");
   });
+
+  // Handle weather data request from client (useful for Edge browser)
+  socket.on("request-weather-data", () => {
+    console.log("Weather data requested by client");
+    if (currentWeather) {
+      console.log("Sending cached weather data to client");
+      socket.emit("weather", currentWeather);
+    } else {
+      console.log("No weather data available to send");
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;

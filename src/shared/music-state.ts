@@ -56,8 +56,16 @@ class MusicStateService {
 
     // Handle weather updates
     this.socket.on("weather", (weatherData: WeatherData) => {
+      console.log(
+        `Received weather data: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
+      );
       this.weatherData = weatherData;
-      this.notifySubscribers({ type: "weather-updated" });
+
+      // Ensure the weather data is properly set before notifying subscribers
+      setTimeout(() => {
+        console.log("Notifying subscribers about weather update");
+        this.notifySubscribers({ type: "weather-updated" });
+      }, 0);
     });
   }
 

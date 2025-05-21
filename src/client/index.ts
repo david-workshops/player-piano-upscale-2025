@@ -184,10 +184,24 @@ function getWeatherDescription(code: number): string {
 
 // Update weather info in UI
 function updateWeatherDisplay(weather: WeatherData) {
-  weatherInfoDisplay.textContent = `${weather.temperature}°C, ${weather.weatherDescription}`;
+  console.log(
+    `Updating weather display: ${weather.temperature}°C, ${weather.weatherDescription}`,
+  );
 
-  // Update weather impact description
-  updateWeatherImpactDisplay(weather);
+  try {
+    // Use innerHTML which is more reliable across browsers than textContent
+    weatherInfoDisplay.innerHTML = `${weather.temperature}°C, ${weather.weatherDescription}`;
+
+    // Update weather impact description
+    updateWeatherImpactDisplay(weather);
+
+    // Force a layout recalculation in Edge (helps with rendering issues)
+    weatherInfoDisplay.style.display = "none";
+    weatherInfoDisplay.offsetHeight; // Force a reflow
+    weatherInfoDisplay.style.display = "";
+  } catch (error) {
+    console.error("Error updating weather display:", error);
+  }
 }
 
 // Update weather impact description in UI
@@ -652,6 +666,19 @@ window.addEventListener("beforeunload", () => {
 // Initialization
 logToConsole("Player Piano initialized");
 logToConsole("Click START to begin playing");
+
+// Check for any existing weather data at startup (especially for Edge browser)
+setTimeout(() => {
+  const existingWeather = musicState.getWeatherData();
+  if (existingWeather) {
+    logToConsole("Using existing weather data at startup");
+    updateWeatherDisplay(existingWeather);
+  } else {
+    logToConsole("No weather data available at startup");
+    // Request weather data from server if another client might have sent it
+    socket.emit("request-weather-data");
+  }
+}, 1000);
 
 // Add missing property to Note interface for tracking
 declare module "../shared/types" {

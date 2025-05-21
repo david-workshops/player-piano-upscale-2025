@@ -159,9 +159,27 @@ function updateNotesInfo() {
 // Update weather info
 function updateWeatherInfo() {
   const weather = musicState.getWeatherData();
-  if (!weather) return;
+  if (!weather) {
+    console.log("Weather data not available yet");
+    return;
+  }
 
-  weatherInfoElement.textContent = `${weather.temperature}°C, ${weather.weatherDescription}`;
+  console.log(
+    `Updating weather info: ${weather.temperature}°C, ${weather.weatherDescription}`,
+  );
+
+  // Update DOM in a way that works consistently across browsers
+  try {
+    // Use innerHTML rather than textContent which can have issues in some browsers
+    weatherInfoElement.innerHTML = `${weather.temperature}°C, ${weather.weatherDescription}`;
+
+    // Force a DOM update in Edge (can help with rendering issues)
+    weatherInfoElement.style.display = "none";
+    weatherInfoElement.offsetHeight; // Force a reflow
+    weatherInfoElement.style.display = "";
+  } catch (error) {
+    console.error("Error updating weather display:", error);
+  }
 
   // Update the Freepik service with weather data
   freepikService.updateWeather(weather);
@@ -277,6 +295,17 @@ updateApiDebugInfo();
 // Initialization message
 logToConsole("Piano Visualizer initialized");
 logToConsole("Auto-starting visualization");
+
+// Ensure weather display is initialized at startup
+setTimeout(() => {
+  // Request fresh weather data if possible
+  musicState.getSocket().emit("request-weather-data");
+
+  // Try to display any existing weather data
+  updateWeatherInfo();
+
+  logToConsole("Weather display initialization check completed");
+}, 1000);
 
 // Add missing property to Note interface for tracking
 declare module "../shared/types" {
