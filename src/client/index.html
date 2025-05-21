@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Piano</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="A virtual player piano with generated minimalist music">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PLAYER PIANO</h1>
+      <p class="subtitle">GENERATIVE MINIMALISM</p>
+    </header>
+
+    <div class="piano-container">
+      <div class="piano-display">
+        <div class="visualization" id="visualization"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <button id="start-btn" class="btn" aria-label="Start piano playback">START</button>
+        <button id="stop-btn" class="btn" aria-label="Stop piano playback">STOP</button>
+      </div>
+      
+      <div class="control-group">
+        <label for="output-select" class="control-label">OUTPUT:</label>
+        <select id="output-select" class="select" aria-label="Select MIDI output">
+          <option value="browser">BROWSER AUDIO</option>
+          <option value="midi">MIDI OUTPUT</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="info-panel" aria-live="polite">
+      <div class="info-row">
+        <span class="info-label">KEY:</span>
+        <span id="current-key" class="info-value">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">SCALE:</span>
+        <span id="current-scale" class="info-value">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">NOTES PLAYING:</span>
+        <span id="notes-playing" class="info-value">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">PEDALS:</span>
+        <span id="pedals-status" class="info-value">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">WEATHER:</span>
+        <span id="weather-info" class="info-value">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">WEATHER IMPACT:</span>
+        <span id="weather-impact" class="info-value">--</span>
+      </div>
+    </div>
+
+    <div id="console-output" class="console-output" aria-live="polite"></div>
+  </div>
+  
+  <script type="module" src="index.ts"></script>
+</body>
+</html>

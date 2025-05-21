@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piano Visualizer</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="AI-generated visualizations based on player piano music">
+</head>
+<body>
+  <div class="fullscreen-container">
+    <div id="current-image" class="visualization-image"></div>
+    <div id="next-image" class="visualization-image"></div>
+    
+    <div id="debug-overlay" class="debug-overlay">
+      <div class="debug-content">
+        <h2>Debug Information</h2>
+        <div class="info-row">
+          <span class="info-label">PROMPT:</span>
+          <span id="prompt-info" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">NOTES INFLUENCING:</span>
+          <span id="notes-info" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">WEATHER:</span>
+          <span id="weather-info" class="info-value">--</span>
+        </div>
+        
+        <h3>Freepik API Status</h3>
+        <div class="info-row">
+          <span class="info-label">API CONFIGURED:</span>
+          <span id="api-configured" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">STATUS:</span>
+          <span id="api-status" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">REQUESTS:</span>
+          <span id="api-requests" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">LAST ERROR:</span>
+          <span id="api-error" class="info-value">--</span>
+        </div>
+        
+        <div id="console-output" class="console-output" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="index.ts"></script>
+</body>
+</html>
