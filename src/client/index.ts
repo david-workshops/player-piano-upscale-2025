@@ -409,29 +409,7 @@ function resetAllPedals() {
   updatePedalDisplay();
 }
 
-// Send MIDI pedal message
-function handlePedal(type: string, value: number) {
-  // Update pedal status
-  if (type === "sustain") {
-    pedalStatus.sustain = value;
-    if (midiOutput) {
-      midiOutput.send([0xb0, 64, Math.floor(value * 127)]);
-    }
-  } else if (type === "sostenuto") {
-    pedalStatus.sostenuto = value;
-    if (midiOutput) {
-      midiOutput.send([0xb0, 66, Math.floor(value * 127)]);
-    }
-  } else if (type === "soft") {
-    pedalStatus.soft = value;
-    if (midiOutput) {
-      midiOutput.send([0xb0, 67, Math.floor(value * 127)]);
-    }
-  }
-
-  // Update pedal display
-  updatePedalDisplay();
-}
+// Removed unused function handlePedal
 
 // Create visualization for a note
 function createNoteVisualization(note: Note) {

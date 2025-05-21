@@ -31,18 +31,32 @@ interface FreepikImageGenerationRequest {
     | "magnific_sparkle";
   fixed_generation?: boolean;
   webhook_url?: string;
+  structure_reference?: string;
+  structure_strength?: number;
+  style_reference?: string;
+  adherence?: number;
+  hdr?: number;
+  model?: string;
+  filter_nsfw?: boolean;
+  styling?: {
+    styles?: Array<{ name: string; strength: number }>;
+    characters?: Array<{ id: string; strength: number }>;
+    colors?: Array<{ color: string; weight: number }>;
+  };
 }
 
 interface FreepikTaskResponse {
-  id: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  task_id: string;
+  task_status: "IN_PROGRESS" | "COMPLETED" | "FAILED";
+  generated: string[];
 }
 
 interface FreepikCompletedTaskResponse {
-  id: string;
-  status: "completed";
-  result: {
-    url: string;
+  data: {
+    generated: string[];
+    task_id: string;
+    status: "COMPLETED";
+    has_nsfw: boolean[];
   };
 }
 
@@ -322,7 +336,7 @@ export class FreepikService {
       }
 
       const data = await response.json();
-      console.log(`Task created successfully: ${data.id}`);
+      console.log(`Task created successfully: ${data.task_id}`);
       return data as FreepikTaskResponse;
     } catch (error) {
       const errorMessage =
@@ -362,19 +376,21 @@ export class FreepikService {
 
         const taskInfo = await response.json();
 
-        if (taskInfo.status === "completed") {
+        if (taskInfo.data && taskInfo.data.status === "COMPLETED") {
           console.log("Task completed successfully");
-          return (taskInfo as FreepikCompletedTaskResponse).result.url;
+          const completedResponse = taskInfo as FreepikCompletedTaskResponse;
+          // Use the first image URL from the 'generated' array
+          return completedResponse.data.generated[0];
         }
 
-        if (taskInfo.status === "failed") {
+        if (taskInfo.data && taskInfo.data.status === "FAILED") {
           const errorMessage = `Task ${taskId} failed: ${JSON.stringify(taskInfo)}`;
           this.requestStats.lastError = errorMessage;
           throw new Error(errorMessage);
         }
 
         console.log(
-          `Task status: ${taskInfo.status} (attempt ${attempt + 1}/${maxAttempts}), waiting...`,
+          `Task status: ${taskInfo.task_status || "IN_PROGRESS"} (attempt ${attempt + 1}/${maxAttempts}), waiting...`,
         );
       } catch (error) {
         const errorMessage =
