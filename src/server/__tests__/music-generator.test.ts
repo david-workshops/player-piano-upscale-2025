@@ -57,4 +57,26 @@ describe("Music Generator", () => {
     // We should observe at least 3 different event types
     expect(eventTypes.size).toBeGreaterThanOrEqual(3);
   });
+  
+  it("should handle windy weather condition correctly", () => {
+    // Create a mock weather data object for windy conditions
+    const windyWeather = {
+      temperature: 20,
+      weatherCode: 19,
+      weatherDescription: "Windy day"
+    };
+    
+    // Generate events with windy weather
+    for (let i = 0; i < 10; i++) {
+      const event = generateMidiEvent(windyWeather);
+      expect(event).toBeDefined();
+      
+      // For note events, check durations are in the expected range for windy conditions
+      if (event.type === "note") {
+        // Note durations for wind should be between 100-1200ms
+        expect(event.note.duration).toBeGreaterThanOrEqual(100);
+        expect(event.note.duration).toBeLessThanOrEqual(1200);
+      }
+    }
+  });
 });

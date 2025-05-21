@@ -153,6 +153,7 @@ function getWeatherDescription(code: number): string {
     1: "Mainly clear",
     2: "Partly cloudy",
     3: "Overcast",
+    19: "Windy day", // Custom code for wind rustling through trees
     45: "Fog",
     48: "Depositing rime fog",
     51: "Light drizzle",
@@ -227,6 +228,9 @@ function updateWeatherImpactDisplay(weather: WeatherData) {
   } else if ([2, 3].includes(code)) {
     // Cloudy
     impact.push("Varied dynamics, moderate activity");
+  } else if ([19].includes(code)) {
+    // Windy
+    impact.push("Flowing arpeggios, varying dynamics");
   } else if (
     [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)
   ) {

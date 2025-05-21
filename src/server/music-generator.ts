@@ -88,6 +88,21 @@ function applyWeatherInfluence(weather: WeatherData | null) {
   else if ([2, 3].includes(code)) {
     settings.density = 0.7; // Moderate density
   }
+  // Windy conditions (19) - custom for wind rustling through trees
+  else if ([19].includes(code)) {
+    settings.density = 0.85; // More notes for rustling effect
+    settings.sustainProbability = 0.08; // Moderate sustain
+    settings.noteDurationRange = { min: 100, max: 1200 }; // Shorter, varied durations
+    settings.velocityRange = { min: 30, max: 110 }; // Wide dynamic range for gusting effect
+    
+    // Prefer scales that create a "rustling" sound
+    if (Math.random() < 0.6) {
+      currentScale = "wholeTone"; // Use whole tone scale for ethereal wind sound
+    }
+    
+    // Slightly adjust tempo for wind movement effect
+    settings.tempo = Math.min(125, settings.tempo + 15); // Slightly faster
+  }
   // Fog conditions (45, 48)
   else if ([45, 48].includes(code)) {
     settings.density = 0.5; // More sparse
