@@ -5,6 +5,7 @@ import path from "path";
 import { generateMidiEvent } from "./music-generator";
 import { WeatherData } from "../shared/types";
 import dotenv from "dotenv";
+import { freepikService } from "./freepik-service";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,6 +34,7 @@ io.on("connection", (socket) => {
   let playing = false;
   let intervalId: NodeJS.Timeout | null = null;
   let currentWeather: WeatherData | null = null;
+  let freepikIntervalId: NodeJS.Timeout | null = null;
 
   // Start streaming MIDI events
   socket.on("start", () => {
@@ -54,6 +56,79 @@ io.on("connection", (socket) => {
       `Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
     );
     currentWeather = weatherData;
+
+    // Update Freepik service with weather data
+    freepikService.updateWeather(weatherData);
+  });
+
+  // Handle notes updates for Freepik service
+  socket.on(
+    "notes-update",
+    (data: { noteNames: string[]; midiNumbers: number[] }) => {
+      freepikService.updateNotes(data.noteNames, data.midiNumbers);
+    },
+  );
+
+  // Generate Freepik image
+  socket.on("generate-image", async () => {
+    try {
+      console.log("Generating image from server...");
+      const result = await freepikService.generateImage();
+      socket.emit("image-generated", result);
+    } catch (error) {
+      console.error("Error generating image:", error);
+      socket.emit("image-error", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Start periodic image generation
+  socket.on("start-image-generation", (interval = 45000) => {
+    if (freepikIntervalId) {
+      clearInterval(freepikIntervalId);
+    }
+
+    // Generate first image immediately
+    freepikService
+      .generateImage()
+      .then((result) => socket.emit("image-generated", result))
+      .catch((error) =>
+        socket.emit("image-error", {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+
+    // Set up interval for future generations
+    freepikIntervalId = setInterval(async () => {
+      try {
+        const result = await freepikService.generateImage();
+        socket.emit("image-generated", result);
+      } catch (error) {
+        socket.emit("image-error", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }, interval);
+
+    console.log(
+      `Started periodic image generation with interval: ${interval}ms`,
+    );
+  });
+
+  // Stop periodic image generation
+  socket.on("stop-image-generation", () => {
+    if (freepikIntervalId) {
+      clearInterval(freepikIntervalId);
+      freepikIntervalId = null;
+      console.log("Stopped periodic image generation");
+    }
+  });
+
+  // Get Freepik API debug info
+  socket.on("get-freepik-debug", () => {
+    const debugInfo = freepikService.getDebugInfo();
+    socket.emit("freepik-debug", debugInfo);
   });
 
   // Stop streaming MIDI events
@@ -72,6 +147,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     if (intervalId) {
       clearInterval(intervalId);
+    }
+    if (freepikIntervalId) {
+      clearInterval(freepikIntervalId);
     }
     console.log("Client disconnected");
   });
