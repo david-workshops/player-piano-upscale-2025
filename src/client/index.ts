@@ -510,7 +510,7 @@ function updatePedalDisplay() {
 // Update notes playing display
 function updateNotesPlayingDisplay() {
   const notesPlaying = musicState.getNotesPlaying();
-  
+
   if (notesPlaying.length > 0) {
     const noteNames = notesPlaying
       .map((n) => `${n.name}${n.octave}`)
@@ -536,48 +536,50 @@ function logToConsole(message: string) {
 // Subscribe to music state events
 musicState.subscribe((event: MusicStateEvent) => {
   const output = outputSelect.value;
-  
+
   switch (event.type) {
     case "notes-updated":
       // Update UI with current notes
       updateNotesPlayingDisplay();
-      
+
       // Play the latest notes
       const notes = musicState.getNotesPlaying();
       if (notes.length > 0) {
         // Find the most recently added notes (ones with the highest _startTime)
         const now = Date.now();
-        const recentNotes = notes.filter(note => (note._startTime || 0) > now - 50);
-        
-        recentNotes.forEach(note => {
+        const recentNotes = notes.filter(
+          (note) => (note._startTime || 0) > now - 50,
+        );
+
+        recentNotes.forEach((note) => {
           // Play the note using selected output
           if (output === "browser") {
             playNote(note);
           } else if (output === "midi" && midiOutput) {
             playMidiNote(note);
           }
-          
+
           if (recentNotes.length === 1) {
             logToConsole(`Playing note: ${note.name}${note.octave}`);
           }
         });
-        
+
         if (recentNotes.length > 1) {
           logToConsole(`Playing ${recentNotes.length} notes`);
         }
       }
       break;
-      
+
     case "key-updated":
       // Update key and scale display
       currentKeyDisplay.textContent = musicState.getCurrentKey();
       currentScaleDisplay.textContent = musicState.getCurrentScale();
       break;
-      
+
     case "pedals-updated":
       // Update pedal display
       updatePedalDisplay();
-      
+
       // Handle MIDI pedal updates
       const pedals = musicState.getPedalStatus();
       if (midiOutput) {
@@ -586,10 +588,10 @@ musicState.subscribe((event: MusicStateEvent) => {
         midiOutput.send([0xb0, 66, Math.floor(pedals.sostenuto * 127)]);
         midiOutput.send([0xb0, 67, Math.floor(pedals.soft * 127)]);
       }
-      
+
       logToConsole(`Pedal status updated`);
       break;
-      
+
     case "weather-updated":
       // Update weather display
       const weatherData = musicState.getWeatherData();
@@ -597,7 +599,7 @@ musicState.subscribe((event: MusicStateEvent) => {
         updateWeatherDisplay(weatherData);
       }
       break;
-      
+
     case "all-notes-off":
       // Stop all notes
       stopAllNotes();

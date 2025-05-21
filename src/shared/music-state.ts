@@ -2,7 +2,7 @@ import { io, Socket } from "socket.io-client";
 import { MidiEvent, Note, WeatherData } from "./types";
 
 // Event types for subscribers
-export type MusicStateEvent = 
+export type MusicStateEvent =
   | { type: "notes-updated" }
   | { type: "weather-updated" }
   | { type: "key-updated" }
@@ -18,20 +18,20 @@ type SubscriberCallback = (event: MusicStateEvent) => void;
 class MusicStateService {
   // Socket connection
   private socket: Socket = io();
-  
+
   // State variables
   private notesPlaying: Note[] = [];
   private weatherData: WeatherData | null = null;
   private currentKey: string = "";
   private currentScale: string = "";
-  
+
   // Pedal status
   private pedalStatus = {
     sustain: 0,
     sostenuto: 0,
     soft: 0,
   };
-  
+
   // Subscribers for state changes
   private subscribers: SubscriberCallback[] = [];
 
@@ -68,11 +68,11 @@ class MusicStateService {
         // Update key and scale
         this.currentKey = event.currentKey;
         this.currentScale = event.currentScale;
-        
+
         // Add timestamp to the note for tracking
         event.note._startTime = Date.now();
         this.notesPlaying.push(event.note);
-        
+
         this.notifySubscribers({ type: "notes-updated" });
         this.notifySubscribers({ type: "key-updated" });
         break;
@@ -82,14 +82,14 @@ class MusicStateService {
         // Update key and scale
         this.currentKey = event.currentKey;
         this.currentScale = event.currentScale;
-        
+
         // Add all notes in the chord or counterpoint
         event.notes.forEach((note) => {
           // Add timestamp to the note for tracking
           note._startTime = Date.now();
           this.notesPlaying.push(note);
         });
-        
+
         this.notifySubscribers({ type: "notes-updated" });
         this.notifySubscribers({ type: "key-updated" });
         break;
@@ -102,7 +102,7 @@ class MusicStateService {
         } else if (event.pedal.type === "soft") {
           this.pedalStatus.soft = event.pedal.value;
         }
-        
+
         this.notifySubscribers({ type: "pedals-updated" });
         break;
 
