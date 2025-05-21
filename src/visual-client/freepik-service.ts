@@ -125,7 +125,7 @@ export class FreepikService {
   }
 
   // Get debug information about API requests
-  public getDebugInfo(): Record<string, unknown> {
+  public getDebugInfo(): DebugInfo {
     // If we have debug info from the server, use that
     if (this.debugInfo) {
       return { ...this.debugInfo };

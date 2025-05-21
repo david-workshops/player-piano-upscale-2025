@@ -63,10 +63,10 @@ async function initMidi() {
   try {
     if (navigator.requestMIDIAccess) {
       const midiAccess = await navigator.requestMIDIAccess();
-      const outputs = midiAccess.outputs.values();
+      const outputs = Array.from(midiAccess.outputs.values());
 
       // Get the first available MIDI output
-      const output = outputs.next().value;
+      const output = outputs.length > 0 ? outputs[0] : null;
       if (output) {
         midiOutput = output;
         logToConsole(`MIDI output selected: ${midiOutput.name}`);
@@ -657,5 +657,12 @@ logToConsole("Click START to begin playing");
 declare module "../shared/types" {
   interface Note {
     _startTime?: number;
+  }
+}
+
+// Extend the Navigator interface with MIDI methods
+declare global {
+  interface Navigator {
+    requestMIDIAccess(): Promise<WebMidi.MIDIAccess>;
   }
 }
