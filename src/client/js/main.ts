@@ -49,12 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
   stopButton.disabled = true;
   
   // Check for Web MIDI API support
-  if (navigator.requestMIDIAccess) {
+  if ('requestMIDIAccess' in navigator) {
     console.log('Web MIDI API is supported in this browser');
   } else {
     console.warn('Web MIDI API is not supported in this browser');
     // Disable MIDI output option
-    const midiOption = outputModeSelect.querySelector('option[value="midi"]');
+    const midiOption = outputModeSelect.querySelector('option[value="midi"]') as HTMLOptionElement;
     if (midiOption) {
       midiOption.disabled = true;
       midiOption.textContent = 'MIDI Output (not supported)';

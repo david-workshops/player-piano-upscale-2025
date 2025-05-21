@@ -24,20 +24,21 @@ export function setupWebSocket(
   visualModule: VisualizationModule
 ): WebSocketModule {
   // Socket.io connection
-  const socket = io();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const socket = (window as any).io();
   
   // MIDI output (if supported)
-  let midiOutput: WebMidi.MIDIOutput | null = null;
-  let midiAccess: WebMidi.MIDIAccess | null = null;
+  let midiOutput: any = null;
+  let midiAccess: any = null;
   
   // Initialize Web MIDI API if available
-  if (navigator.requestMIDIAccess) {
-    navigator.requestMIDIAccess()
-      .then((access) => {
+  if ('requestMIDIAccess' in navigator) {
+    (navigator as any).requestMIDIAccess()
+      .then((access: any) => {
         midiAccess = access;
         console.log('MIDI access granted', access);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error('Error accessing MIDI devices:', err);
       });
   }
