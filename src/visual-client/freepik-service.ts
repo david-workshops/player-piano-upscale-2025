@@ -52,7 +52,7 @@ interface ActiveNotes {
 
 export class FreepikService {
   private baseUrl = "https://api.freepik.com/v1/ai/mystic";
-  private apiKey = ""; // This should be set via environment variable or config
+  private apiKey = process.env.FREEPIK_API_KEY || ""; // Get API key from environment variable
   private lastPrompt = "";
   private activeNotes: ActiveNotes = {
     noteNames: [],
@@ -62,11 +62,27 @@ export class FreepikService {
   };
   private weatherData: WeatherData | null = null;
   private usePlaceholder = true; // Use placeholder when API key is not available
+  private requestStats = {
+    totalRequests: 0,
+    successfulRequests: 0,
+    failedRequests: 0,
+    lastError: "",
+    lastRequestTime: 0,
+    pendingRequest: false,
+  };
 
   constructor(apiKey?: string) {
     if (apiKey) {
       this.apiKey = apiKey;
-      this.usePlaceholder = false;
+    }
+    
+    // Only use real API if we have a valid key
+    this.usePlaceholder = !this.apiKey || this.apiKey.trim() === "";
+    
+    if (this.usePlaceholder) {
+      console.log("No Freepik API key found, using placeholder gradients");
+    } else {
+      console.log("Freepik API key configured");
     }
   }
 
@@ -164,13 +180,33 @@ export class FreepikService {
     return this.lastPrompt;
   }
 
+  // Get debug information about API requests
+  public getDebugInfo(): Record<string, any> {
+    return {
+      apiConfigured: !!this.apiKey && this.apiKey.trim() !== "",
+      usePlaceholder: this.usePlaceholder,
+      requestStats: { ...this.requestStats },
+      activeNotes: { ...this.activeNotes },
+      weatherData: this.weatherData,
+      lastPrompt: this.lastPrompt,
+    };
+  }
+
   // Generate an image using the Freepik API
   public async generateImage(): Promise<string> {
     const prompt = this.generatePrompt();
+    this.requestStats.totalRequests++;
+    this.requestStats.lastRequestTime = Date.now();
+    this.requestStats.pendingRequest = true;
 
     if (this.usePlaceholder || !this.apiKey) {
       console.log(`Using placeholder image with prompt: ${prompt}`);
       const colors = this.getColorsFromPrompt(prompt);
+      
+      // Simulate some delay to avoid instant changes
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      this.requestStats.pendingRequest = false;
       return this.generatePlaceholderImage(colors);
     }
 
@@ -225,10 +261,20 @@ export class FreepikService {
 
       // Step 2: Poll for task completion
       const imageUrl = await this.pollTaskStatus(taskResponse.id);
-
+      
+      this.requestStats.successfulRequests++;
+      this.requestStats.pendingRequest = false;
+      
       return imageUrl;
     } catch (error) {
-      console.error("Error generating image with Freepik API:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Error generating image with Freepik API:", errorMessage);
+      
+      // Update stats
+      this.requestStats.failedRequests++;
+      this.requestStats.lastError = errorMessage;
+      this.requestStats.pendingRequest = false;
+      
       // Fallback to placeholder image on error
       const colors = this.getColorsFromPrompt(prompt);
       return this.generatePlaceholderImage(colors);
@@ -239,22 +285,32 @@ export class FreepikService {
   private async createImageTask(
     requestBody: FreepikImageGenerationRequest,
   ): Promise<FreepikTaskResponse> {
-    const response = await fetch(this.baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-freepik-api-key": this.apiKey,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-freepik-api-key": this.apiKey,
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to create image task: ${response.status} ${response.statusText}`,
-      );
+      if (!response.ok) {
+        const errorText = await response.text();
+        const statusDetail = `${response.status} ${response.statusText}`;
+        const errorMessage = `Failed to create image task: ${statusDetail}. Details: ${errorText}`;
+        this.requestStats.lastError = errorMessage;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      console.log(`Task created successfully: ${data.id}`);
+      return data as FreepikTaskResponse;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.requestStats.lastError = `Task creation failed: ${errorMessage}`;
+      throw error;
     }
-
-    return (await response.json()) as FreepikTaskResponse;
   }
 
   // Poll for task completion
@@ -275,26 +331,32 @@ export class FreepikService {
         });
 
         if (!response.ok) {
-          console.warn(
-            `Error checking task status: ${response.status} ${response.statusText}`,
-          );
+          const errorText = await response.text();
+          const statusDetail = `${response.status} ${response.statusText}`;
+          console.warn(`Error checking task status: ${statusDetail}. Details: ${errorText}`);
           // Continue polling despite error
-        } else {
-          const taskInfo = await response.json();
-
-          if (taskInfo.status === "completed") {
-            console.log("Task completed successfully");
-            return (taskInfo as FreepikCompletedTaskResponse).result.url;
-          }
-
-          if (taskInfo.status === "failed") {
-            throw new Error("Task failed");
-          }
-
-          console.log(`Task status: ${taskInfo.status}, waiting...`);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
         }
+
+        const taskInfo = await response.json();
+
+        if (taskInfo.status === "completed") {
+          console.log("Task completed successfully");
+          return (taskInfo as FreepikCompletedTaskResponse).result.url;
+        }
+
+        if (taskInfo.status === "failed") {
+          const errorMessage = `Task ${taskId} failed: ${JSON.stringify(taskInfo)}`;
+          this.requestStats.lastError = errorMessage;
+          throw new Error(errorMessage);
+        }
+
+        console.log(`Task status: ${taskInfo.status} (attempt ${attempt + 1}/${maxAttempts}), waiting...`);
       } catch (error) {
-        console.error(`Error polling task: ${error}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Error polling task: ${errorMessage}`);
+        this.requestStats.lastError = `Poll error: ${errorMessage}`;
         // Continue polling despite error
       }
 
@@ -302,7 +364,9 @@ export class FreepikService {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
 
-    throw new Error(`Task did not complete after ${maxAttempts} attempts`);
+    const timeoutError = `Task did not complete after ${maxAttempts} attempts`;
+    this.requestStats.lastError = timeoutError;
+    throw new Error(timeoutError);
   }
 
   // Extract dominant colors from the prompt to use for our placeholder

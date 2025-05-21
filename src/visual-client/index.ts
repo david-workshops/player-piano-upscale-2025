@@ -17,12 +17,15 @@ const weatherInfoElement = document.getElementById(
 const consoleOutput = document.getElementById("console-output") as HTMLElement;
 const debugOverlay = document.getElementById("debug-overlay") as HTMLDivElement;
 
-// Get API key from environment (in a real app) or from a secure config
-// For development, we'll use a placeholder when there's no API key
-const apiKey = ""; // process.env.FREEPIK_API_KEY
+// API debug elements
+const apiConfiguredElement = document.getElementById("api-configured") as HTMLElement;
+const apiStatusElement = document.getElementById("api-status") as HTMLElement;
+const apiRequestsElement = document.getElementById("api-requests") as HTMLElement;
+const apiErrorElement = document.getElementById("api-error") as HTMLElement;
 
-// Freepik service
-const freepikService = new FreepikService(apiKey);
+// Get API key from environment variables (loaded by dotenv in server)
+// No need to hardcode it here
+const freepikService = new FreepikService();
 
 // State variables
 let isPlaying = false;
@@ -104,6 +107,9 @@ function startImageRefresh() {
   logToConsole(
     `Image refresh started, interval: ${IMAGE_UPDATE_INTERVAL / 1000} seconds`,
   );
+  
+  // Also update debug info regularly
+  setInterval(updateApiDebugInfo, 1000);
 }
 
 // Stop image refresh cycle
@@ -123,9 +129,15 @@ async function updateImage() {
 
   try {
     fadeInProgress = true;
+    
+    // Update debug info to show pending request
+    updateApiDebugInfo();
 
     // Generate a new image for the hidden layer
     const newImageUrl = await freepikService.generateImage();
+    
+    // Update debug info after request completes
+    updateApiDebugInfo();
 
     // Update the next image container (currently hidden)
     if (newImageUrl.startsWith("http")) {
@@ -164,10 +176,16 @@ async function updateImage() {
 
       fadeInProgress = false;
       logToConsole("Image updated with fade transition");
+      
+      // Update debug info after transition completes
+      updateApiDebugInfo();
     }, FADE_TRANSITION_DURATION);
   } catch (error) {
     fadeInProgress = false;
     logToConsole(`Error updating image: ${error}`);
+    
+    // Update debug info with error
+    updateApiDebugInfo();
   }
 }
 
@@ -181,9 +199,46 @@ function preloadImage(url: string): Promise<void> {
   });
 }
 
+// Update API debug information
+function updateApiDebugInfo() {
+  const debugInfo = freepikService.getDebugInfo();
+  
+  // Update API configuration status
+  apiConfiguredElement.textContent = debugInfo.apiConfigured ? "YES" : "NO";
+  apiConfiguredElement.className = "info-value " + (debugInfo.apiConfigured ? "success" : "error");
+  
+  // Update current API status
+  if (debugInfo.usePlaceholder) {
+    apiStatusElement.textContent = "USING PLACEHOLDER (CSS GRADIENTS)";
+    apiStatusElement.className = "info-value warning";
+  } else if (debugInfo.requestStats.pendingRequest) {
+    apiStatusElement.textContent = "REQUEST IN PROGRESS...";
+    apiStatusElement.className = "info-value pending";
+  } else {
+    apiStatusElement.textContent = "READY";
+    apiStatusElement.className = "info-value success";
+  }
+  
+  // Update request statistics
+  apiRequestsElement.textContent = 
+    `Total: ${debugInfo.requestStats.totalRequests}, ` +
+    `Success: ${debugInfo.requestStats.successfulRequests}, ` +
+    `Failed: ${debugInfo.requestStats.failedRequests}`;
+  
+  // Update last error if any
+  if (debugInfo.requestStats.lastError) {
+    apiErrorElement.textContent = debugInfo.requestStats.lastError;
+    apiErrorElement.className = "info-value error";
+  } else {
+    apiErrorElement.textContent = "None";
+    apiErrorElement.className = "info-value";
+  }
+}
+
 // Toggle debug overlay visibility
 function toggleDebugOverlay() {
   debugOverlay.classList.toggle("visible");
+  updateApiDebugInfo(); // Update API debug info when overlay is shown
   logToConsole("Debug overlay toggled");
 }
 
@@ -281,6 +336,7 @@ document.addEventListener("keydown", (event) => {
 // Initialize displays with current state
 updateNotesInfo();
 updateWeatherInfo();
+updateApiDebugInfo();
 
 // Initialization message
 logToConsole("Piano Visualizer initialized");

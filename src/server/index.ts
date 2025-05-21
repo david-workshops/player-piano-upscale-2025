@@ -4,6 +4,10 @@ import { Server } from "socket.io";
 import path from "path";
 import { generateMidiEvent } from "./music-generator";
 import { WeatherData } from "../shared/types";
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);

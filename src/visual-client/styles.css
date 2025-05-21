@@ -65,10 +65,19 @@ body {
   padding: 20px;
 }
 
-.debug-content h2 {
+.debug-content h2,
+.debug-content h3 {
   margin-bottom: 20px;
   text-align: center;
   color: #fff;
+}
+
+.debug-content h3 {
+  margin-top: 30px;
+  font-size: 1.2rem;
+  color: #8af;
+  border-bottom: 1px solid #555;
+  padding-bottom: 8px;
 }
 
 .info-row {
@@ -89,6 +98,29 @@ body {
 .info-value {
   font-family: monospace;
   word-break: break-word;
+}
+
+/* Status indicator colors */
+.info-value.success {
+  color: #4f4;
+}
+
+.info-value.error {
+  color: #f44;
+}
+
+.info-value.warning {
+  color: #ff4;
+}
+
+.info-value.pending {
+  color: #fa4;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Console output for debug information */
