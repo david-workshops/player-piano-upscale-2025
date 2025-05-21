@@ -1,0 +1,47 @@
+{
+  "name": "midi-piano-player",
+  "version": "1.0.0",
+  "description": "A minimalist counterpoint MIDI piano player with Web Audio API",
+  "main": "dist/server/index.js",
+  "scripts": {
+    "start": "node dist/server/index.js",
+    "build": "tsc",
+    "build:client": "tsc --project tsconfig.client.json",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon --watch src/server -e ts --exec ts-node src/server/index.ts",
+    "dev:client": "ts-node src/scripts/serve-client.ts",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "docs": "typedoc --out docs src"
+  },
+  "keywords": [
+    "midi",
+    "piano",
+    "web audio",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.21",
+    "@types/socket.io": "^3.0.1",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.27.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
+    "ts-jest": "^29.3.4",
+    "ts-node": "^10.9.2",
+    "typedoc": "^0.28.4",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Player - Minimalist Counterpoint</title>
+    <meta name="description" content="A minimalist counterpoint MIDI piano player using Web Audio API">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Load scripts at end of body -->
+</head>
+<body>
+    <div class="retro-computer">
+        <header>
+            <h1>Piano Player</h1>
+            <p>Minimalist Counterpoint Generator</p>
+        </header>
+        
+        <main>
+            <section class="visualization" aria-label="Music Visualization">
+                <div id="piano-roll"></div>
+                <div id="data-display">
+                    <div class="info-group">
+                        <h2>Current Key:</h2>
+                        <div id="current-key">C</div>
+                    </div>
+                    <div class="info-group">
+                        <h2>Current Scale:</h2>
+                        <div id="current-scale">major</div>
+                    </div>
+                    <div class="info-group">
+                        <h2>Current Mode:</h2>
+                        <div id="current-mode">ionian</div>
+                    </div>
+                    <div class="info-group">
+                        <h2>Active Notes:</h2>
+                        <div id="active-notes">-</div>
+                    </div>
+                    <div class="info-group">
+                        <h2>Pedals:</h2>
+                        <div id="pedal-status">-</div>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="controls" aria-label="Player Controls">
+                <div class="control-group">
+                    <button id="play-button" class="retro-button" aria-label="Start playing">
+                        PLAY
+                    </button>
+                    <button id="stop-button" class="retro-button" aria-label="Stop playing">
+                        STOP
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <label for="output-mode" class="retro-label">Output Mode:</label>
+                    <div class="retro-select-wrapper">
+                        <select id="output-mode" aria-label="Select output mode">
+                            <option value="browser">Browser Audio</option>
+                            <option value="midi">MIDI Output</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>Using Web Audio API | <a href="https://github.com/david-workshops/demo2" aria-label="View source on GitHub">GitHub</a></p>
+        </footer>
+    </div>
+    
+    <!-- Socket.IO client -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Application scripts -->
+    <script type="module" src="js/audio.js"></script>
+    <script type="module" src="js/visualization.js"></script>
+    <script type="module" src="js/websocket.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
