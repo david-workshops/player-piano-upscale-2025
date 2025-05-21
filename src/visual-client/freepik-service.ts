@@ -182,7 +182,7 @@ export class FreepikService {
   }
 
   // Start periodic image generation
-  public startPeriodicGeneration(interval = 45000) {
+  public startPeriodicGeneration(interval = 145000) {
     this.socket.emit("start-image-generation", interval);
   }
 

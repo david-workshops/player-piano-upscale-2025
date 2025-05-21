@@ -91,7 +91,7 @@ h1 {
   flex-wrap: wrap;
   gap: 2px;
   padding: 10px;
-  min-height: 200px;
+  min-height: 80px;
   align-content: flex-start;
   width: 100%;
   overflow-y: auto;

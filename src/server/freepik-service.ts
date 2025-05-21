@@ -283,7 +283,7 @@ export class FreepikService {
       const taskResponse = await this.createImageTask(requestBody);
 
       // Step 2: Poll for task completion
-      const imageUrl = await this.pollTaskStatus(taskResponse.id);
+      const imageUrl = await this.pollTaskStatus(taskResponse.task_id);
 
       this.requestStats.successfulRequests++;
       this.requestStats.pendingRequest = false;
@@ -336,8 +336,9 @@ export class FreepikService {
       }
 
       const data = await response.json();
-      console.log(`Task created successfully: ${data.task_id}`);
-      return data as FreepikTaskResponse;
+      console.log("Image task created successfully:", data);
+      console.log(`Task created successfully: ${data.data.task_id}`);
+      return data.data as FreepikTaskResponse;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

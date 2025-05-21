@@ -84,7 +84,7 @@ io.on("connection", (socket) => {
   });
 
   // Start periodic image generation
-  socket.on("start-image-generation", (interval = 45000) => {
+  socket.on("start-image-generation", (interval = 105000) => {
     if (freepikIntervalId) {
       clearInterval(freepikIntervalId);
     }
