@@ -1,23 +1,28 @@
-import { io } from 'socket.io-client';
-import { MidiEvent, Note, WeatherData } from '../shared/types';
-import { FreepikService } from './freepik-service';
+import { io } from "socket.io-client";
+import { MidiEvent, Note, WeatherData } from "../shared/types";
+import { FreepikService } from "./freepik-service";
 
 // Connect to the same server as the piano client
 const socket = io();
 
 // DOM elements
-const startButton = document.getElementById('start-btn') as HTMLButtonElement;
-const stopButton = document.getElementById('stop-btn') as HTMLButtonElement;
-const currentImageElement = document.getElementById('current-image') as HTMLDivElement;
-const nextImageElement = document.getElementById('next-image') as HTMLDivElement;
-const promptInfoElement = document.getElementById('prompt-info') as HTMLElement;
-const notesInfoElement = document.getElementById('notes-info') as HTMLElement;
-const weatherInfoElement = document.getElementById('weather-info') as HTMLElement;
-const consoleOutput = document.getElementById('console-output') as HTMLElement;
+const currentImageElement = document.getElementById(
+  "current-image",
+) as HTMLDivElement;
+const nextImageElement = document.getElementById(
+  "next-image",
+) as HTMLDivElement;
+const promptInfoElement = document.getElementById("prompt-info") as HTMLElement;
+const notesInfoElement = document.getElementById("notes-info") as HTMLElement;
+const weatherInfoElement = document.getElementById(
+  "weather-info",
+) as HTMLElement;
+const consoleOutput = document.getElementById("console-output") as HTMLElement;
+const debugOverlay = document.getElementById("debug-overlay") as HTMLDivElement;
 
 // Get API key from environment (in a real app) or from a secure config
 // For development, we'll use a placeholder when there's no API key
-const apiKey = ''; // process.env.FREEPIK_API_KEY
+const apiKey = ""; // process.env.FREEPIK_API_KEY
 
 // Freepik service
 const freepikService = new FreepikService(apiKey);
@@ -25,7 +30,6 @@ const freepikService = new FreepikService(apiKey);
 // State variables
 let isPlaying = false;
 let imageUpdateInterval: number | null = null;
-let currentWeather: WeatherData | null = null;
 let notesPlaying: Note[] = [];
 let fadeInProgress = false;
 
@@ -38,25 +42,25 @@ async function initVisualization() {
   try {
     // Generate the first image
     const imageUrl = await freepikService.generateImage();
-    
+
     // Use the result either as a direct URL or as a CSS gradient
-    if (imageUrl.startsWith('http')) {
+    if (imageUrl.startsWith("http")) {
       // It's a real API image URL
       currentImageElement.style.backgroundImage = `url(${imageUrl})`;
-      logToConsole('Using real Freepik API image');
+      logToConsole("Using real Freepik API image");
     } else {
       // It's a CSS gradient (placeholder)
       currentImageElement.style.backgroundImage = imageUrl;
-      logToConsole('Using placeholder gradient image');
+      logToConsole("Using placeholder gradient image");
     }
-    
-    currentImageElement.style.opacity = '1';
-    nextImageElement.style.opacity = '0';
-    
+
+    currentImageElement.style.opacity = "1";
+    nextImageElement.style.opacity = "0";
+
     // Update the prompt info
     promptInfoElement.textContent = freepikService.getLastPrompt();
-    
-    logToConsole('Visualization initialized');
+
+    logToConsole("Visualization initialized");
     return true;
   } catch (error) {
     logToConsole(`Error initializing visualization: ${error}`);
@@ -64,18 +68,46 @@ async function initVisualization() {
   }
 }
 
+// Start the visualization automatically
+function startVisualization() {
+  if (isPlaying) return;
+
+  isPlaying = true;
+  logToConsole("Starting visualization");
+
+  // Initialize the first image and start refresh cycle
+  initVisualization().then(() => {
+    startImageRefresh();
+  });
+
+  // Tell the server we're starting (it might send us current state)
+  socket.emit("start");
+}
+
+// Stop the visualization
+function stopVisualization() {
+  if (!isPlaying) return;
+
+  isPlaying = false;
+  stopImageRefresh();
+  socket.emit("stop");
+  logToConsole("Visualization stopped");
+}
+
 // Start image refresh cycle
 function startImageRefresh() {
   if (imageUpdateInterval !== null) {
     clearInterval(imageUpdateInterval);
   }
-  
+
   // First update immediately
   updateImage();
-  
+
   // Set interval for updates
   imageUpdateInterval = window.setInterval(updateImage, IMAGE_UPDATE_INTERVAL);
-  logToConsole(`Image refresh started, interval: ${IMAGE_UPDATE_INTERVAL/1000} seconds`);
+  logToConsole(
+    `Image refresh started, interval: ${IMAGE_UPDATE_INTERVAL / 1000} seconds`,
+  );
 }
 
 // Stop image refresh cycle
@@ -83,7 +115,7 @@ function stopImageRefresh() {
   if (imageUpdateInterval !== null) {
     clearInterval(imageUpdateInterval);
     imageUpdateInterval = null;
-    logToConsole('Image refresh stopped');
+    logToConsole("Image refresh stopped");
   }
 }
 
@@ -92,51 +124,51 @@ async function updateImage() {
   if (fadeInProgress) {
     return; // Skip if a fade is already in progress
   }
-  
+
   try {
     fadeInProgress = true;
-    
+
     // Generate a new image for the hidden layer
     const newImageUrl = await freepikService.generateImage();
-    
+
     // Update the next image container (currently hidden)
-    if (newImageUrl.startsWith('http')) {
+    if (newImageUrl.startsWith("http")) {
       // Real API image URL
       // Preload the image before showing it
       await preloadImage(newImageUrl);
       nextImageElement.style.backgroundImage = `url(${newImageUrl})`;
-      logToConsole('New Freepik API image loaded');
+      logToConsole("New Freepik API image loaded");
     } else {
       // CSS gradient (placeholder)
       nextImageElement.style.backgroundImage = newImageUrl;
-      logToConsole('New placeholder gradient generated');
+      logToConsole("New placeholder gradient generated");
     }
-    
+
     // Start the fade transition
-    nextImageElement.style.opacity = '1';
-    currentImageElement.style.opacity = '0';
-    
+    nextImageElement.style.opacity = "1";
+    currentImageElement.style.opacity = "0";
+
     // Update the prompt info
     promptInfoElement.textContent = freepikService.getLastPrompt();
-    
+
     // After transition completes, swap the layers
     setTimeout(() => {
       // Swap the z-index of the layers
       const tempZIndex = currentImageElement.style.zIndex;
       currentImageElement.style.zIndex = nextImageElement.style.zIndex;
       nextImageElement.style.zIndex = tempZIndex;
-      
+
       // Reset opacity for next transition
-      currentImageElement.style.opacity = '1';
-      nextImageElement.style.opacity = '0';
-      
+      currentImageElement.style.opacity = "1";
+      nextImageElement.style.opacity = "0";
+
       // Copy the image to the current layer
-      currentImageElement.style.backgroundImage = nextImageElement.style.backgroundImage;
-      
+      currentImageElement.style.backgroundImage =
+        nextImageElement.style.backgroundImage;
+
       fadeInProgress = false;
-      logToConsole('Image updated with fade transition');
+      logToConsole("Image updated with fade transition");
     }, FADE_TRANSITION_DURATION);
-    
   } catch (error) {
     fadeInProgress = false;
     logToConsole(`Error updating image: ${error}`);
@@ -153,24 +185,32 @@ function preloadImage(url: string): Promise<void> {
   });
 }
 
+// Toggle debug overlay visibility
+function toggleDebugOverlay() {
+  debugOverlay.classList.toggle("visible");
+  logToConsole("Debug overlay toggled");
+}
+
 // Update the notes info display
 function updateNotesInfo() {
   if (notesPlaying.length > 0) {
-    const noteNames = notesPlaying.map(n => `${n.name}${n.octave}`).join(', ');
-    const midiNumbers = notesPlaying.map(n => n.midiNumber);
-    
+    const noteNames = notesPlaying
+      .map((n) => `${n.name}${n.octave}`)
+      .join(", ");
+    const midiNumbers = notesPlaying.map((n) => n.midiNumber);
+
     notesInfoElement.textContent = noteNames;
-    
+
     // Update the Freepik service with current notes
-    freepikService.updateNotes(noteNames.split(', '), midiNumbers);
+    freepikService.updateNotes(noteNames.split(", "), midiNumbers);
   } else {
-    notesInfoElement.textContent = '--';
+    notesInfoElement.textContent = "--";
     freepikService.updateNotes([], []);
   }
-  
+
   // Cleanup notes that are finished playing
   const now = Date.now();
-  notesPlaying = notesPlaying.filter(note => {
+  notesPlaying = notesPlaying.filter((note) => {
     return (note._startTime || 0) + note.duration > now;
   });
 }
@@ -178,10 +218,9 @@ function updateNotesInfo() {
 // Update weather info
 function updateWeatherInfo(weather: WeatherData) {
   weatherInfoElement.textContent = `${weather.temperature}°C, ${weather.weatherDescription}`;
-  
+
   // Update the Freepik service with weather data
   freepikService.updateWeather(weather);
-  currentWeather = weather;
 }
 
 // Log message to console
@@ -192,40 +231,42 @@ function logToConsole(message: string) {
 }
 
 // Socket event handlers
-socket.on('connect', () => {
-  logToConsole('Connected to server');
+socket.on("connect", () => {
+  logToConsole("Connected to server");
+
+  // Auto-start the visualization on connection
+  startVisualization();
 });
 
-socket.on('disconnect', () => {
-  logToConsole('Disconnected from server');
-  if (imageUpdateInterval !== null) {
-    clearInterval(imageUpdateInterval);
-    imageUpdateInterval = null;
-  }
+socket.on("disconnect", () => {
+  logToConsole("Disconnected from server");
+
+  // Auto-stop the visualization on disconnect
+  stopVisualization();
 });
 
 // Handle MIDI events from server
-socket.on('midi', (event: MidiEvent) => {
+socket.on("midi", (event: MidiEvent) => {
   switch (event.type) {
-    case 'note':
+    case "note":
       // Add timestamp to the note for tracking
       event.note._startTime = Date.now();
       notesPlaying.push(event.note);
       updateNotesInfo();
       break;
-      
-    case 'chord':
-    case 'counterpoint':
+
+    case "chord":
+    case "counterpoint":
       // Add all notes in the chord or counterpoint
-      event.notes.forEach(note => {
+      event.notes.forEach((note) => {
         // Add timestamp to the note for tracking
         note._startTime = Date.now();
         notesPlaying.push(note);
       });
       updateNotesInfo();
       break;
-      
-    case 'allNotesOff':
+
+    case "allNotesOff":
       notesPlaying = [];
       updateNotesInfo();
       break;
@@ -233,57 +274,37 @@ socket.on('midi', (event: MidiEvent) => {
 });
 
 // Handle weather updates
-socket.on('weather', (weatherData: WeatherData) => {
+socket.on("weather", (weatherData: WeatherData) => {
   updateWeatherInfo(weatherData);
-  logToConsole(`Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`);
-});
-
-// Button event listeners
-startButton.addEventListener('click', async () => {
-  if (!isPlaying) {
-    isPlaying = true;
-    
-    // Initialize the first image
-    const success = await initVisualization();
-    if (success) {
-      // Start the image refresh cycle
-      startImageRefresh();
-      
-      // Tell the server we're starting (it might send us current state)
-      socket.emit('start');
-      logToConsole('Visualization started');
-    } else {
-      isPlaying = false;
-    }
-  }
-});
-
-stopButton.addEventListener('click', () => {
-  if (isPlaying) {
-    isPlaying = false;
-    stopImageRefresh();
-    socket.emit('stop');
-    logToConsole('Visualization stopped');
-  }
+  logToConsole(
+    `Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
+  );
 });
 
 // Cleanup function
-window.addEventListener('beforeunload', () => {
+window.addEventListener("beforeunload", () => {
   if (imageUpdateInterval !== null) {
     clearInterval(imageUpdateInterval);
   }
 });
 
 // Initialize the UI layers
-currentImageElement.style.zIndex = '2';
-nextImageElement.style.zIndex = '1';
+currentImageElement.style.zIndex = "2";
+nextImageElement.style.zIndex = "1";
+
+// Add event listener for keyboard events (? key for debug overlay)
+document.addEventListener("keydown", (event) => {
+  if (event.key === "?") {
+    toggleDebugOverlay();
+  }
+});
 
 // Initialization message
-logToConsole('Piano Visualizer initialized');
-logToConsole('Click START to begin visualization');
+logToConsole("Piano Visualizer initialized");
+logToConsole("Auto-starting visualization");
 
 // Add missing property to Note interface for tracking
-declare module '../shared/types' {
+declare module "../shared/types" {
   interface Note {
     _startTime?: number;
   }

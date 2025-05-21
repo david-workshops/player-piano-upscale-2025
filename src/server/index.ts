@@ -1,73 +1,75 @@
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import path from 'path';
-import { generateMidiEvent } from './music-generator';
-import { WeatherData } from '../shared/types';
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import path from "path";
+import { generateMidiEvent } from "./music-generator";
+import { WeatherData } from "../shared/types";
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
+    origin: "*",
+    methods: ["GET", "POST"],
   },
 });
 
 // Serve static files from the "dist/client" directory
-app.use(express.static(path.join(__dirname, '../../client')));
+app.use(express.static(path.join(__dirname, "../../client")));
 
 // Send all requests to index.html so client-side routing works
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../../client/index.html'));
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "../../client/index.html"));
 });
 
 // Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('Client connected');
-  
+io.on("connection", (socket) => {
+  console.log("Client connected");
+
   let playing = false;
   let intervalId: NodeJS.Timeout | null = null;
   let currentWeather: WeatherData | null = null;
 
   // Start streaming MIDI events
-  socket.on('start', () => {
+  socket.on("start", () => {
     if (!playing) {
       playing = true;
-      console.log('Starting MIDI stream');
-      
+      console.log("Starting MIDI stream");
+
       // Generate MIDI events at regular intervals
       intervalId = setInterval(() => {
         const event = generateMidiEvent(currentWeather);
-        socket.emit('midi', event);
+        socket.emit("midi", event);
       }, 100); // Generate events every 100ms (adjust as needed)
     }
   });
 
   // Handle weather updates from client
-  socket.on('weather', (weatherData: WeatherData) => {
-    console.log(`Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`);
+  socket.on("weather", (weatherData: WeatherData) => {
+    console.log(
+      `Weather update received: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
+    );
     currentWeather = weatherData;
   });
 
   // Stop streaming MIDI events
-  socket.on('stop', () => {
+  socket.on("stop", () => {
     if (playing && intervalId) {
       clearInterval(intervalId);
       playing = false;
-      console.log('Stopped MIDI stream');
-      
+      console.log("Stopped MIDI stream");
+
       // Send all notes off message
-      socket.emit('midi', { type: 'allNotesOff' });
+      socket.emit("midi", { type: "allNotesOff" });
     }
   });
 
   // Handle disconnect
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     if (intervalId) {
       clearInterval(intervalId);
     }
-    console.log('Client disconnected');
+    console.log("Client disconnected");
   });
 });
 

@@ -1,33 +1,50 @@
-import { io } from 'socket.io-client';
-import { MidiEvent, Note, WeatherData } from '../shared/types';
+import { io } from "socket.io-client";
+import { MidiEvent, Note, WeatherData } from "../shared/types";
 
 // Connect to the server
 const socket = io();
 
 // DOM elements
-const startButton = document.getElementById('start-btn') as HTMLButtonElement;
-const stopButton = document.getElementById('stop-btn') as HTMLButtonElement;
-const outputSelect = document.getElementById('output-select') as HTMLSelectElement;
-const visualization = document.getElementById('visualization') as HTMLDivElement;
-const currentKeyDisplay = document.getElementById('current-key') as HTMLElement;
-const currentScaleDisplay = document.getElementById('current-scale') as HTMLElement;
-const notesPlayingDisplay = document.getElementById('notes-playing') as HTMLElement;
-const pedalsStatusDisplay = document.getElementById('pedals-status') as HTMLElement;
-const weatherInfoDisplay = document.getElementById('weather-info') as HTMLElement;
-const weatherImpactDisplay = document.getElementById('weather-impact') as HTMLElement;
-const consoleOutput = document.getElementById('console-output') as HTMLElement;
+const startButton = document.getElementById("start-btn") as HTMLButtonElement;
+const stopButton = document.getElementById("stop-btn") as HTMLButtonElement;
+const outputSelect = document.getElementById(
+  "output-select",
+) as HTMLSelectElement;
+const visualization = document.getElementById(
+  "visualization",
+) as HTMLDivElement;
+const currentKeyDisplay = document.getElementById("current-key") as HTMLElement;
+const currentScaleDisplay = document.getElementById(
+  "current-scale",
+) as HTMLElement;
+const notesPlayingDisplay = document.getElementById(
+  "notes-playing",
+) as HTMLElement;
+const pedalsStatusDisplay = document.getElementById(
+  "pedals-status",
+) as HTMLElement;
+const weatherInfoDisplay = document.getElementById(
+  "weather-info",
+) as HTMLElement;
+const weatherImpactDisplay = document.getElementById(
+  "weather-impact",
+) as HTMLElement;
+const consoleOutput = document.getElementById("console-output") as HTMLElement;
 
 // AudioContext and MIDI
 let audioContext: AudioContext | null = null;
 let gainNode: GainNode | null = null;
 let midiOutput: WebMidi.MIDIOutput | null = null;
-let activeNotes: Map<number, { oscillator: OscillatorNode, gainNode: GainNode, endTime: number }> = new Map();
+const activeNotes: Map<
+  number,
+  { oscillator: OscillatorNode; gainNode: GainNode; endTime: number }
+> = new Map();
 
 // Pedal status
 const pedalStatus = {
   sustain: 0,
   sostenuto: 0,
-  soft: 0
+  soft: 0,
 };
 
 // Piano state
@@ -45,7 +62,7 @@ function initAudio() {
     gainNode = audioContext.createGain();
     gainNode.gain.value = 0.5;
     gainNode.connect(audioContext.destination);
-    logToConsole('Audio initialized');
+    logToConsole("Audio initialized");
   }
 }
 
@@ -55,7 +72,7 @@ async function initMidi() {
     if (navigator.requestMIDIAccess) {
       const midiAccess = await navigator.requestMIDIAccess();
       const outputs = midiAccess.outputs.values();
-      
+
       // Get the first available MIDI output
       const output = outputs.next().value;
       if (output) {
@@ -63,11 +80,11 @@ async function initMidi() {
         logToConsole(`MIDI output selected: ${midiOutput.name}`);
         return true;
       } else {
-        logToConsole('No MIDI outputs available');
+        logToConsole("No MIDI outputs available");
         return false;
       }
     } else {
-      logToConsole('WebMIDI not supported in this browser');
+      logToConsole("WebMIDI not supported in this browser");
       return false;
     }
   } catch (error) {
@@ -77,10 +94,13 @@ async function initMidi() {
 }
 
 // Get user's location using the Geolocation API
-async function getUserLocation(): Promise<{ latitude: number, longitude: number } | null> {
+async function getUserLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
-      logToConsole('Geolocation not supported in this browser');
+      logToConsole("Geolocation not supported in this browser");
       resolve(null);
       return;
     }
@@ -89,38 +109,43 @@ async function getUserLocation(): Promise<{ latitude: number, longitude: number 
       (position) => {
         resolve({
           latitude: position.coords.latitude,
-          longitude: position.coords.longitude
+          longitude: position.coords.longitude,
         });
       },
       (error) => {
         logToConsole(`Geolocation error: ${error.message}`);
         resolve(null);
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
   });
 }
 
 // Fetch weather data from Open-Meteo API
-async function fetchWeatherData(latitude: number, longitude: number): Promise<WeatherData | null> {
+async function fetchWeatherData(
+  latitude: number,
+  longitude: number,
+): Promise<WeatherData | null> {
   try {
     const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`,
     );
-    
+
     if (!response.ok) {
-      throw new Error(`Weather API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Weather API error: ${response.status} ${response.statusText}`,
+      );
     }
-    
+
     const data = await response.json();
-    
+
     // Map the weather code to a description
     const weatherDescription = getWeatherDescription(data.current.weather_code);
-    
+
     return {
       temperature: data.current.temperature_2m,
       weatherCode: data.current.weather_code,
-      weatherDescription
+      weatherDescription,
     };
   } catch (error) {
     logToConsole(`Error fetching weather: ${error}`);
@@ -132,77 +157,84 @@ async function fetchWeatherData(latitude: number, longitude: number): Promise<We
 function getWeatherDescription(code: number): string {
   // WMO Weather interpretation codes (WW)
   const weatherCodes: Record<number, string> = {
-    0: 'Clear sky',
-    1: 'Mainly clear',
-    2: 'Partly cloudy',
-    3: 'Overcast',
-    45: 'Fog',
-    48: 'Depositing rime fog',
-    51: 'Light drizzle',
-    53: 'Moderate drizzle',
-    55: 'Dense drizzle',
-    56: 'Light freezing drizzle',
-    57: 'Dense freezing drizzle',
-    61: 'Slight rain',
-    63: 'Moderate rain',
-    65: 'Heavy rain',
-    66: 'Light freezing rain',
-    67: 'Heavy freezing rain',
-    71: 'Slight snow fall',
-    73: 'Moderate snow fall',
-    75: 'Heavy snow fall',
-    77: 'Snow grains',
-    80: 'Slight rain showers',
-    81: 'Moderate rain showers',
-    82: 'Violent rain showers',
-    85: 'Slight snow showers',
-    86: 'Heavy snow showers',
-    95: 'Thunderstorm',
-    96: 'Thunderstorm with slight hail',
-    99: 'Thunderstorm with heavy hail',
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Light freezing drizzle",
+    57: "Dense freezing drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Light freezing rain",
+    67: "Heavy freezing rain",
+    71: "Slight snow fall",
+    73: "Moderate snow fall",
+    75: "Heavy snow fall",
+    77: "Snow grains",
+    80: "Slight rain showers",
+    81: "Moderate rain showers",
+    82: "Violent rain showers",
+    85: "Slight snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with slight hail",
+    99: "Thunderstorm with heavy hail",
   };
-  
-  return weatherCodes[code] || 'Unknown';
+
+  return weatherCodes[code] || "Unknown";
 }
 
 // Update weather info in UI
 function updateWeatherDisplay(weather: WeatherData) {
   weatherInfoDisplay.textContent = `${weather.temperature}°C, ${weather.weatherDescription}`;
-  
+
   // Update weather impact description
   updateWeatherImpactDisplay(weather);
 }
 
 // Update weather impact description in UI
 function updateWeatherImpactDisplay(weather: WeatherData) {
-  let impact = [];
-  
+  const impact = [];
+
   // Temperature impact
   if (weather.temperature < 0) {
-    impact.push('Slower tempo, lower register');
+    impact.push("Slower tempo, lower register");
   } else if (weather.temperature < 10) {
-    impact.push('Minor scales, softer dynamics');
+    impact.push("Minor scales, softer dynamics");
   } else if (weather.temperature > 25) {
-    impact.push('Brighter scales, higher register');
+    impact.push("Brighter scales, higher register");
   } else if (weather.temperature > 30) {
-    impact.push('Faster tempo, more activity');
+    impact.push("Faster tempo, more activity");
   }
-  
+
   // Weather condition impact
   const code = weather.weatherCode;
-  if ([0, 1].includes(code)) { // Clear
-    impact.push('Sparse, bright notes');
-  } else if ([2, 3].includes(code)) { // Cloudy
-    impact.push('Varied dynamics, moderate activity');
-  } else if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) { // Rain
-    impact.push('More sustain pedal, softer attacks');
-  } else if ([71, 73, 75, 77, 85, 86].includes(code)) { // Snow
-    impact.push('Slower, gentler passages');
-  } else if ([95, 96, 99].includes(code)) { // Thunderstorm
-    impact.push('Dramatic dynamics, cluster chords');
+  if ([0, 1].includes(code)) {
+    // Clear
+    impact.push("Sparse, bright notes");
+  } else if ([2, 3].includes(code)) {
+    // Cloudy
+    impact.push("Varied dynamics, moderate activity");
+  } else if (
+    [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)
+  ) {
+    // Rain
+    impact.push("More sustain pedal, softer attacks");
+  } else if ([71, 73, 75, 77, 85, 86].includes(code)) {
+    // Snow
+    impact.push("Slower, gentler passages");
+  } else if ([95, 96, 99].includes(code)) {
+    // Thunderstorm
+    impact.push("Dramatic dynamics, cluster chords");
   }
-  
-  weatherImpactDisplay.textContent = impact.join(', ');
+
+  weatherImpactDisplay.textContent = impact.join(", ");
 }
 
 // Initialize weather updates
@@ -211,12 +243,15 @@ async function initWeatherUpdates() {
   if (weatherUpdateInterval !== null) {
     clearInterval(weatherUpdateInterval);
   }
-  
+
   // First update
   await updateWeather();
-  
+
   // Set interval for updates
-  weatherUpdateInterval = window.setInterval(updateWeather, WEATHER_UPDATE_INTERVAL);
+  weatherUpdateInterval = window.setInterval(
+    updateWeather,
+    WEATHER_UPDATE_INTERVAL,
+  );
 }
 
 // Update weather and send to server
@@ -225,22 +260,27 @@ async function updateWeather() {
   if (!location) {
     return;
   }
-  
-  const weatherData = await fetchWeatherData(location.latitude, location.longitude);
+
+  const weatherData = await fetchWeatherData(
+    location.latitude,
+    location.longitude,
+  );
   if (!weatherData) {
     return;
   }
-  
+
   // Update current weather state
   currentWeather = weatherData;
-  
+
   // Update UI
   updateWeatherDisplay(weatherData);
-  
+
   // Send to server
-  socket.emit('weather', weatherData);
-  logToConsole(`Weather updated: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`);
-  
+  socket.emit("weather", weatherData);
+  logToConsole(
+    `Weather updated: ${weatherData.temperature}°C, ${weatherData.weatherDescription}`,
+  );
+
   return weatherData;
 }
 
@@ -248,59 +288,62 @@ async function updateWeather() {
 function playNote(note: Note) {
   if (!audioContext || !gainNode) initAudio();
   if (!audioContext || !gainNode) return;
-  
+
   const now = audioContext.currentTime;
-  
+
   // Create oscillator
   const oscillator = audioContext.createOscillator();
-  oscillator.type = 'sine'; // Piano-like sound
+  oscillator.type = "sine"; // Piano-like sound
   oscillator.frequency.value = midiToFrequency(note.midiNumber);
-  
+
   // Create note-specific gain node for envelope
   const noteGain = audioContext.createGain();
   noteGain.gain.value = 0;
-  
+
   // Connect nodes
   oscillator.connect(noteGain);
   noteGain.connect(gainNode);
-  
+
   // Apply envelope
   const velocityGain = note.velocity / 127;
   const attackTime = 0.01;
   const releaseTime = 0.3;
-  
+
   // Attack
   noteGain.gain.setValueAtTime(0, now);
   noteGain.gain.linearRampToValueAtTime(velocityGain, now + attackTime);
-  
+
   // Calculate end time based on sustain pedal
   const sustainMultiplier = pedalStatus.sustain > 0.5 ? 3 : 1;
-  const noteDuration = note.duration / 1000 * sustainMultiplier;
+  const noteDuration = (note.duration / 1000) * sustainMultiplier;
   const endTime = now + noteDuration;
-  
+
   // Release
   noteGain.gain.setValueAtTime(velocityGain, endTime - releaseTime);
   noteGain.gain.linearRampToValueAtTime(0, endTime);
-  
+
   // Start and schedule stop
   oscillator.start(now);
   oscillator.stop(endTime + 0.1);
-  
+
   // Store active note
-  activeNotes.set(note.midiNumber, { 
-    oscillator, 
-    gainNode: noteGain, 
-    endTime: endTime 
+  activeNotes.set(note.midiNumber, {
+    oscillator,
+    gainNode: noteGain,
+    endTime: endTime,
   });
-  
+
   // Schedule cleanup
-  setTimeout(() => {
-    activeNotes.delete(note.midiNumber);
-  }, (noteDuration + 0.2) * 1000);
-  
+  setTimeout(
+    () => {
+      activeNotes.delete(note.midiNumber);
+    },
+    (noteDuration + 0.2) * 1000,
+  );
+
   // Add to notes playing
   notesPlaying.push(note);
-  
+
   // Create visualization element
   createNoteVisualization(note);
 }
@@ -308,18 +351,18 @@ function playNote(note: Note) {
 // Play a note using MIDI output
 function playMidiNote(note: Note) {
   if (!midiOutput) return;
-  
+
   // NoteOn message
   midiOutput.send([0x90, note.midiNumber, note.velocity]);
-  
+
   // Schedule NoteOff
   setTimeout(() => {
     midiOutput?.send([0x80, note.midiNumber, 0]);
   }, note.duration);
-  
+
   // Add to notes playing
   notesPlaying.push(note);
-  
+
   // Create visualization element
   createNoteVisualization(note);
 }
@@ -337,28 +380,28 @@ function stopAllNotes() {
     });
     activeNotes.clear();
   }
-  
+
   // Stop MIDI notes
   if (midiOutput) {
     // Send All Notes Off message
-    midiOutput.send([0xB0, 123, 0]);
-    
+    midiOutput.send([0xb0, 123, 0]);
+
     // Send Note Off messages for all possible MIDI notes (0-127)
     // This ensures any stuck notes are definitely turned off
     for (let i = 0; i < 128; i++) {
-      midiOutput.send([0x80, i, 0]);  // Note Off for each MIDI note
+      midiOutput.send([0x80, i, 0]); // Note Off for each MIDI note
     }
   }
-  
+
   // Reset all pedals to 0
   resetAllPedals();
-  
+
   // Clear notes playing
   notesPlaying = [];
-  notesPlayingDisplay.textContent = '--';
-  
+  notesPlayingDisplay.textContent = "--";
+
   // Clear visualization
-  visualization.innerHTML = '';
+  visualization.innerHTML = "";
 }
 
 // Reset all pedals to 0
@@ -367,17 +410,17 @@ function resetAllPedals() {
   pedalStatus.sustain = 0;
   pedalStatus.sostenuto = 0;
   pedalStatus.soft = 0;
-  
+
   // Send MIDI messages to reset pedals
   if (midiOutput) {
     // Reset sustain pedal
-    midiOutput.send([0xB0, 64, 0]);
+    midiOutput.send([0xb0, 64, 0]);
     // Reset sostenuto pedal
-    midiOutput.send([0xB0, 66, 0]);
+    midiOutput.send([0xb0, 66, 0]);
     // Reset soft pedal
-    midiOutput.send([0xB0, 67, 0]);
+    midiOutput.send([0xb0, 67, 0]);
   }
-  
+
   // Update pedal display
   updatePedalDisplay();
 }
@@ -385,40 +428,40 @@ function resetAllPedals() {
 // Send MIDI pedal message
 function handlePedal(type: string, value: number) {
   // Update pedal status
-  if (type === 'sustain') {
+  if (type === "sustain") {
     pedalStatus.sustain = value;
     if (midiOutput) {
-      midiOutput.send([0xB0, 64, Math.floor(value * 127)]);
+      midiOutput.send([0xb0, 64, Math.floor(value * 127)]);
     }
-  } else if (type === 'sostenuto') {
+  } else if (type === "sostenuto") {
     pedalStatus.sostenuto = value;
     if (midiOutput) {
-      midiOutput.send([0xB0, 66, Math.floor(value * 127)]);
+      midiOutput.send([0xb0, 66, Math.floor(value * 127)]);
     }
-  } else if (type === 'soft') {
+  } else if (type === "soft") {
     pedalStatus.soft = value;
     if (midiOutput) {
-      midiOutput.send([0xB0, 67, Math.floor(value * 127)]);
+      midiOutput.send([0xb0, 67, Math.floor(value * 127)]);
     }
   }
-  
+
   // Update pedal display
   updatePedalDisplay();
 }
 
 // Create visualization for a note
 function createNoteVisualization(note: Note) {
-  const noteElement = document.createElement('div');
-  noteElement.className = 'note-block';
+  const noteElement = document.createElement("div");
+  noteElement.className = "note-block";
   noteElement.textContent = `${note.name}${note.octave}`;
-  
+
   // Set width based on duration
   const width = Math.max(30, Math.min(200, note.duration / 50));
   noteElement.style.width = `${width}px`;
-  
+
   // Set color intensity based on velocity
   const intensity = Math.floor((note.velocity / 127) * 100);
-  
+
   // Modify color based on weather if available
   let hue = 120; // Default green
   if (currentWeather) {
@@ -432,9 +475,13 @@ function createNoteVisualization(note: Note) {
     } else if (currentWeather.temperature > 25) {
       hue = 60; // Yellow for warm
     }
-    
+
     // Adjust saturation based on weather conditions
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(currentWeather.weatherCode)) {
+    if (
+      [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(
+        currentWeather.weatherCode,
+      )
+    ) {
       // Rainy conditions, more blue
       hue = Math.max(hue, 180);
     } else if ([95, 96, 99].includes(currentWeather.weatherCode)) {
@@ -442,16 +489,16 @@ function createNoteVisualization(note: Note) {
       hue = 270;
     }
   }
-  
+
   noteElement.style.backgroundColor = `hsl(${hue}, 100%, ${intensity}%)`;
-  
+
   visualization.appendChild(noteElement);
-  
+
   // Remove after duration
   setTimeout(() => {
     noteElement.remove();
   }, note.duration);
-  
+
   // Update notes playing display
   updateNotesPlayingDisplay();
 }
@@ -459,7 +506,7 @@ function createNoteVisualization(note: Note) {
 // Update pedal display
 function updatePedalDisplay() {
   const pedals = [];
-  
+
   if (pedalStatus.sustain > 0) {
     pedals.push(`SUSTAIN: ${Math.floor(pedalStatus.sustain * 100)}%`);
   }
@@ -469,22 +516,25 @@ function updatePedalDisplay() {
   if (pedalStatus.soft > 0) {
     pedals.push(`SOFT: ${Math.floor(pedalStatus.soft * 100)}%`);
   }
-  
-  pedalsStatusDisplay.textContent = pedals.length > 0 ? pedals.join(', ') : '--';
+
+  pedalsStatusDisplay.textContent =
+    pedals.length > 0 ? pedals.join(", ") : "--";
 }
 
 // Update notes playing display
 function updateNotesPlayingDisplay() {
   if (notesPlaying.length > 0) {
-    const noteNames = notesPlaying.map(n => `${n.name}${n.octave}`).join(', ');
+    const noteNames = notesPlaying
+      .map((n) => `${n.name}${n.octave}`)
+      .join(", ");
     notesPlayingDisplay.textContent = noteNames;
   } else {
-    notesPlayingDisplay.textContent = '--';
+    notesPlayingDisplay.textContent = "--";
   }
-  
+
   // Cleanup notes that are finished playing
   const now = Date.now();
-  notesPlaying = notesPlaying.filter(note => {
+  notesPlaying = notesPlaying.filter((note) => {
     return (note._startTime || 0) + note.duration > now;
   });
 }
@@ -502,70 +552,72 @@ function logToConsole(message: string) {
 }
 
 // Handle MIDI events from server
-socket.on('midi', (event: MidiEvent) => {
+socket.on("midi", (event: MidiEvent) => {
   const output = outputSelect.value;
-  
+
   switch (event.type) {
-    case 'note':
+    case "note":
       // Update key and scale display
       currentKeyDisplay.textContent = event.currentKey;
       currentScaleDisplay.textContent = event.currentScale;
-      
+
       // Add timestamp to the note for tracking
       event.note._startTime = Date.now();
-      
+
       // Play the note using selected output
-      if (output === 'browser') {
+      if (output === "browser") {
         playNote(event.note);
-      } else if (output === 'midi' && midiOutput) {
+      } else if (output === "midi" && midiOutput) {
         playMidiNote(event.note);
       }
       logToConsole(`Playing note: ${event.note.name}${event.note.octave}`);
       break;
-      
-    case 'chord':
-    case 'counterpoint':
+
+    case "chord":
+    case "counterpoint":
       // Update key and scale display
       currentKeyDisplay.textContent = event.currentKey;
       currentScaleDisplay.textContent = event.currentScale;
-      
+
       // Play all notes in the chord or counterpoint
-      event.notes.forEach(note => {
+      event.notes.forEach((note) => {
         // Add timestamp to the note for tracking
         note._startTime = Date.now();
-        
-        if (output === 'browser') {
+
+        if (output === "browser") {
           playNote(note);
-        } else if (output === 'midi' && midiOutput) {
+        } else if (output === "midi" && midiOutput) {
           playMidiNote(note);
         }
       });
       logToConsole(`Playing ${event.type}: ${event.notes.length} notes`);
       break;
-      
-    case 'pedal':
+
+    case "pedal":
       handlePedal(event.pedal.type, event.pedal.value);
-      logToConsole(`Pedal: ${event.pedal.type} ${Math.floor(event.pedal.value * 100)}%`);
+      logToConsole(
+        `Pedal: ${event.pedal.type} ${Math.floor(event.pedal.value * 100)}%`,
+      );
       break;
-      
-    case 'allNotesOff':
+
+    case "allNotesOff":
       stopAllNotes();
-      logToConsole('All notes off');
+      logToConsole("All notes off");
       break;
-      
-    case 'silence':
+
+    case "silence":
       logToConsole(`Silence: ${event.duration}ms`);
       break;
   }
 });
 
 // Socket connection events
-socket.on('connect', () => {
-  logToConsole('Connected to server');
+socket.on("connect", () => {
+  logToConsole("Connected to server");
 });
 
-socket.on('disconnect', () => {
-  logToConsole('Disconnected from server');
+socket.on("disconnect", () => {
+  logToConsole("Disconnected from server");
   // Clear weather update interval on disconnect
   if (weatherUpdateInterval !== null) {
     clearInterval(weatherUpdateInterval);
@@ -574,48 +626,48 @@ socket.on('disconnect', () => {
 });
 
 // Event listeners
-startButton.addEventListener('click', async () => {
+startButton.addEventListener("click", async () => {
   initAudio();
-  
+
   // Initialize weather before starting
   await initWeatherUpdates();
-  
-  if (outputSelect.value === 'midi') {
-    initMidi().then(success => {
+
+  if (outputSelect.value === "midi") {
+    initMidi().then((success) => {
       if (success) {
-        socket.emit('start');
-        logToConsole('Starting MIDI stream - MIDI output');
+        socket.emit("start");
+        logToConsole("Starting MIDI stream - MIDI output");
       } else {
-        outputSelect.value = 'browser';
-        socket.emit('start');
-        logToConsole('MIDI not available, falling back to browser audio');
+        outputSelect.value = "browser";
+        socket.emit("start");
+        logToConsole("MIDI not available, falling back to browser audio");
       }
     });
   } else {
-    socket.emit('start');
-    logToConsole('Starting MIDI stream - Browser audio');
+    socket.emit("start");
+    logToConsole("Starting MIDI stream - Browser audio");
   }
 });
 
-stopButton.addEventListener('click', () => {
-  socket.emit('stop');
-  logToConsole('Stopping MIDI stream');
+stopButton.addEventListener("click", () => {
+  socket.emit("stop");
+  logToConsole("Stopping MIDI stream");
 });
 
-outputSelect.addEventListener('change', () => {
-  if (outputSelect.value === 'midi') {
-    initMidi().then(success => {
+outputSelect.addEventListener("change", () => {
+  if (outputSelect.value === "midi") {
+    initMidi().then((success) => {
       if (!success) {
-        outputSelect.value = 'browser';
-        logToConsole('MIDI not available, falling back to browser audio');
+        outputSelect.value = "browser";
+        logToConsole("MIDI not available, falling back to browser audio");
       }
     });
   }
 });
 
 // Cleanup function
-window.addEventListener('beforeunload', () => {
-  socket.emit('stop');
+window.addEventListener("beforeunload", () => {
+  socket.emit("stop");
   stopAllNotes();
   if (weatherUpdateInterval !== null) {
     clearInterval(weatherUpdateInterval);
@@ -623,11 +675,11 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Initialization
-logToConsole('Player Piano initialized');
-logToConsole('Click START to begin playing');
+logToConsole("Player Piano initialized");
+logToConsole("Click START to begin playing");
 
 // Add missing property to Note interface for tracking
-declare module '../shared/types' {
+declare module "../shared/types" {
   interface Note {
     _startTime?: number;
   }
