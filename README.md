@@ -1,6 +1,8 @@
 # Player Piano
 
-A virtual player piano application that generates minimalist counterpoint music with evolving key and scale changes.
+A virtual player piano application that generates minimalist counterpoint music with evolving key and scale changes. Built specifically for the Yamaha Disklavier DC6X ENPRO piano system.
+
+Watch our [demo video](https://youtu.be/cjs80pxvVFM) to see the Player Piano in action.
 
 ## Features
 
@@ -9,7 +11,8 @@ A virtual player piano application that generates minimalist counterpoint music 
 - Minimalist counterpoint composition that changes over time
 - Support for piano pedals (sustain, sostenuto, soft)
 - Retro computer UI with live visualization
-- MIDI output support
+- MIDI output support with Yamaha Disklavier DC6X ENPRO compatibility
+- XP MIDI for enhanced expression control
 - Accessibility compliant with WCAG 2.2
 - Weather-influenced music generation
 - AI-generated visualizations based on music and weather data
@@ -75,7 +78,22 @@ To use MIDI output instead of browser audio:
 2. Select "MIDI OUTPUT" from the dropdown
 3. Start the player
 
+This project is specifically built as a demo for the [Yamaha Disklavier DC6X ENPRO](https://usa.yamaha.com/products/musical_instruments/pianos/disklavier/enspire_pro/index.html) player piano, leveraging its advanced features for expressive performance.
+
+The application uses XP MIDI (Extended Precision MIDI) parameters for enhanced control over:
+- Attack time - Fine-grained control of note attack characteristics
+- Release time - Precise control of note release behavior
+- Brightness - Tonal color adjustments
+
 Note: MIDI output requires a browser that supports the Web MIDI API (Chrome, Edge, Opera).
+
+## Demo
+
+Watch the Player Piano in action with a Yamaha Disklavier DC6X ENPRO:
+
+[![Player Piano Demo](https://img.youtube.com/vi/cjs80pxvVFM/0.jpg)](https://youtu.be/cjs80pxvVFM)
+
+[Watch on YouTube](https://youtu.be/cjs80pxvVFM)
 
 ## Development
 
@@ -115,6 +133,7 @@ The application generates minimalist counterpoint music with:
 - Natural silences and dynamic changes
 - Support for pedal usage
 - Weather-influenced musical parameters
+- XP MIDI parameters for enhanced expression on the Disklavier system
 
 ### Visualization Generation
 
