@@ -15,7 +15,9 @@ const weatherInfoElement = document.getElementById(
 ) as HTMLElement;
 const consoleOutput = document.getElementById("console-output") as HTMLElement;
 const debugOverlay = document.getElementById("debug-overlay") as HTMLDivElement;
-const fullscreenButton = document.getElementById("fullscreen-btn") as HTMLButtonElement;
+const fullscreenButton = document.getElementById(
+  "fullscreen-btn",
+) as HTMLButtonElement;
 
 // API debug elements
 const apiConfiguredElement = document.getElementById(
@@ -209,12 +211,12 @@ function toggleFullscreen() {
 function handleMouseActivity() {
   // Show the button
   fullscreenButton.classList.add("visible");
-  
+
   // Clear existing timeout
   if (mouseActivityTimeout !== null) {
     window.clearTimeout(mouseActivityTimeout);
   }
-  
+
   // Set new timeout to hide the button after inactivity
   mouseActivityTimeout = window.setTimeout(() => {
     fullscreenButton.classList.remove("visible");
@@ -318,7 +320,9 @@ nextImageElement.style.zIndex = "1";
 
 // Add event listeners for fullscreen button and mouse activity
 fullscreenButton.addEventListener("click", toggleFullscreen);
-document.querySelector(".fullscreen-container")?.addEventListener("mousemove", handleMouseActivity);
+document
+  .querySelector(".fullscreen-container")
+  ?.addEventListener("mousemove", handleMouseActivity);
 
 // Add event listener for keyboard events (? key for debug overlay, F for fullscreen)
 document.addEventListener("keydown", (event) => {
