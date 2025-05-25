@@ -30,6 +30,40 @@ body {
   transition: opacity 3s ease-in-out;
 }
 
+/* Fullscreen button */
+.fullscreen-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.5s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.fullscreen-button:hover {
+  background-color: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.fullscreen-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.fullscreen-button.visible {
+  opacity: 1;
+}
+
 #current-image {
   z-index: 2;
 }

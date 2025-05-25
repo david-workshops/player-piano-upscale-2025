@@ -15,6 +15,7 @@ const weatherInfoElement = document.getElementById(
 ) as HTMLElement;
 const consoleOutput = document.getElementById("console-output") as HTMLElement;
 const debugOverlay = document.getElementById("debug-overlay") as HTMLDivElement;
+const fullscreenButton = document.getElementById("fullscreen-btn") as HTMLButtonElement;
 
 // API debug elements
 const apiConfiguredElement = document.getElementById(
@@ -32,10 +33,12 @@ const freepikService = new FreepikService();
 // State variables
 let isPlaying = false;
 let fadeInProgress = false;
+let mouseActivityTimeout: number | null = null;
 
 // Constants
 const IMAGE_UPDATE_INTERVAL = 45 * 1000; // 45 seconds
 const FADE_TRANSITION_DURATION = 3000; // 3 seconds
+const MOUSE_ACTIVITY_TIMEOUT = 3000; // 3 seconds
 
 // Initialize visualization
 async function initVisualization() {
@@ -185,6 +188,39 @@ function updateWeatherInfo() {
   freepikService.updateWeather(weather);
 }
 
+// Toggle fullscreen mode
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    // Enter fullscreen
+    document.documentElement.requestFullscreen().catch((err) => {
+      logToConsole(`Error attempting to enter fullscreen: ${err.message}`);
+    });
+    logToConsole("Entered fullscreen mode");
+  } else {
+    // Exit fullscreen
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+      logToConsole("Exited fullscreen mode");
+    }
+  }
+}
+
+// Show fullscreen button on mouse activity
+function handleMouseActivity() {
+  // Show the button
+  fullscreenButton.classList.add("visible");
+  
+  // Clear existing timeout
+  if (mouseActivityTimeout !== null) {
+    window.clearTimeout(mouseActivityTimeout);
+  }
+  
+  // Set new timeout to hide the button after inactivity
+  mouseActivityTimeout = window.setTimeout(() => {
+    fullscreenButton.classList.remove("visible");
+  }, MOUSE_ACTIVITY_TIMEOUT);
+}
+
 // Log message to console
 function logToConsole(message: string) {
   const timestamp = new Date().toISOString().substring(11, 19);
@@ -280,10 +316,16 @@ window.addEventListener("beforeunload", () => {
 currentImageElement.style.zIndex = "2";
 nextImageElement.style.zIndex = "1";
 
-// Add event listener for keyboard events (? key for debug overlay)
+// Add event listeners for fullscreen button and mouse activity
+fullscreenButton.addEventListener("click", toggleFullscreen);
+document.querySelector(".fullscreen-container")?.addEventListener("mousemove", handleMouseActivity);
+
+// Add event listener for keyboard events (? key for debug overlay, F for fullscreen)
 document.addEventListener("keydown", (event) => {
   if (event.key === "?") {
     toggleDebugOverlay();
+  } else if (event.key === "f" || event.key === "F") {
+    toggleFullscreen();
   }
 });
 
